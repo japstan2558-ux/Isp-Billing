@@ -73,8 +73,6 @@
     .sync-status { font-size: 12px; color: #27ae60; margin-left: 8px; }
     .sync-status.error { color: #e74c3c; }
     .update-log { background: #f8f9fa; padding: 8px; border-radius: 6px; margin: 4px 0; font-size: 13px; }
-    .filter-chip { display: inline-block; background: #ebf5fb; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #3498db; margin: 2px; }
-    .filter-chip .remove { cursor: pointer; margin-left: 4px; color: #e74c3c; }
     @media (max-width: 500px) {
       .stats-grid { grid-template-columns: 1fr 1fr; }
       .stat-card .number { font-size: 20px; }
@@ -146,10 +144,10 @@
   // ============================================================
   // APP VERSION
   // ============================================================
-  const APP_VERSION = '3.2.0';
+  const APP_VERSION = '3.3.1';
 
   // ============================================================
-  // DATA LAYER (local storage for offline cache)
+  // DATA LAYER
   // ============================================================
   const DB_KEY = 'shirotech_data';
 
@@ -207,15 +205,17 @@
   // HELPER: Compute Due Date (30 days after installation)
   // ============================================================
   function computeDueDate(installDateStr) {
+    if (!installDateStr) return '';
     const date = new Date(installDateStr);
     date.setDate(date.getDate() + 30);
     return date.toISOString().split('T')[0];
   }
 
   // ============================================================
-  // HELPER: Count 30-day periods from installation to now
+  // HELPER: Count 30-day periods
   // ============================================================
   function countPeriods(installDateStr, currentDate) {
+    if (!installDateStr) return 0;
     const install = new Date(installDateStr);
     const now = currentDate || new Date();
     const diffTime = now - install;
@@ -223,9 +223,6 @@
     return Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30));
   }
 
-  // ============================================================
-  // HELPER: Get total due based on 30-day periods
-  // ============================================================
   function getTotalDue(installDateStr, monthlyAmount, currentDate) {
     const periods = countPeriods(installDateStr, currentDate);
     return periods * monthlyAmount;
@@ -415,7 +412,7 @@
   }
 
   // ============================================================
-  // PASSWORD RESET, CHANGE PASSWORD, ETC. (same as before)
+  // PASSWORD RESET, CHANGE PASSWORD, ETC. (simplified)
   // ============================================================
   let resetCodes = {};
 
@@ -785,7 +782,7 @@
     }, 100);
   }
 
-  // ----- CLIENTS (with enhanced search and address filter) -----
+  // ----- CLIENTS (FIXED: No more N/A) -----
   function renderClients(container, data, clientsWithBalance) {
     let html = `
       <div class="card">
@@ -830,8 +827,8 @@
           <tr>
             <td>${client.ID}</td>
             <td>${client.Name || ''}</td>
-            <td class="clickable-address" onclick="filterByAddress('${(client.Address || '').replace(/'/g, "\\'")}')" title="Click to filter by this address">${client.Address || 'N/A'}</td>
-            <td>${client.Contact || 'N/A'}</td>
+            <td class="clickable-address" onclick="filterByAddress('${(client.Address || '').replace(/'/g, "\\'")}')" title="Click to filter by this address">${client.Address || ''}</td>
+            <td>${client.Contact || ''}</td>
             <td>${client.Plan || ''}</td>
             <td>₱${Number(client.Amount).toFixed(2)}</td>
             <td>${client.InstallDate || ''}</td>
@@ -850,7 +847,6 @@
       });
     }
     
-    // Update filter display
     const filterDisplay = document.querySelector('.search-hint');
     if (filterDisplay && filterText) {
       filterDisplay.textContent = '🔍 Filtered by: ' + filterText;
@@ -882,7 +878,7 @@
   }
 
   function filterByAddress(address) {
-    if (!address || address === 'N/A') return;
+    if (!address || address === '') return;
     currentFilter = address;
     const input = document.getElementById('searchInput');
     if (input) {
@@ -920,7 +916,7 @@
             <select id="cPlan" onchange="autoFillPrice('cPlan','cAmount')"></select>
           </div>
           <div class="form-group"><label>Monthly Amount *</label><input type="number" id="cAmount" step="0.01" required></div>
-          <div class="form-group"><label>Installation Date</label><input type="date" id="cInstallDate"></div>
+          <div class="form-group"><label>Installation Date</label><input type="date" id="cInstallDate" required></div>
           <div class="form-group"><label>Account Name</label><input type="text" id="cAccount"></div>
           <div class="form-group"><label>Napbox</label><input type="text" id="cNapbox"></div>
           <div class="form-group">
@@ -1235,7 +1231,7 @@
     document.getElementById('modalContainer').appendChild(modal);
   }
 
-  // ----- TICKETS (unchanged from previous version) -----
+  // ----- TICKETS (unchanged) -----
   function showCreateTicket(clientId) {
     const data = loadLocalData();
     const client = data.clients.find(c => c.ID == clientId);
