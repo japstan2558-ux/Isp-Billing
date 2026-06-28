@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shirotech Network Solutions</title>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding-bottom: 70px; }
+    .hidden { display: none !important; }
+    .app-header { background: #1a2a3a; color: white; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .app-header .brand { font-size: 20px; font-weight: bold; }
+    .app-header .brand small { font-size: 13px; font-weight: normal; display: block; color: #bdc3c7; }
+    .app-header .clock { font-size: 14px; color: #bdc3c7; text-align: right; }
+    .app-header .user-info { font-size: 14px; color: #ecf0f1; margin: 0 12px; }
+    .app-header .user-info a { color: #bdc3c7; text-decoration: underline; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+    .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 16px; }
+    .card h2 { border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-bottom: 16px; color: #2c3e50; font-size: 20px; }
+    .card h2 i { margin-right: 8px; }
+    .btn { display: inline-block; padding: 10px 16px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 4px; }
+    .btn:hover { opacity: 0.8; }
+    .btn-success { background: #27ae60; }
+    .btn-danger { background: #e74c3c; }
+    .btn-warning { background: #f39c12; }
+    .btn-info { background: #17a2b8; }
+    .btn-outline { background: transparent; border: 1px solid #3498db; color: #3498db; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; }
+    .btn-block { display: block; width: 100%; margin: 8px 0; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; font-family: inherit; }
+    .table-responsive { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { background: #ecf0f1; text-align: left; padding: 10px; }
+    td { padding: 10px; border-bottom: 1px solid #ecf0f1; }
+    .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+    .badge-success { background: #d4edda; color: #155724; }
+    .badge-danger { background: #f8d7da; color: #721c24; }
+    .badge-warning { background: #fff3cd; color: #856404; }
+    .badge-info { background: #d1ecf1; color: #0c5460; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 16px 0; }
+    .stat-card { background: #f8f9fa; padding: 16px; border-radius: 8px; text-align: center; }
+    .stat-card .number { font-size: 24px; font-weight: bold; color: #2c3e50; }
+    .stat-card .label { font-size: 13px; color: #7f8c8d; }
+    .chart-container { height: 200px; margin: 16px 0; }
+    .flex { display: flex; gap: 8px; flex-wrap: wrap; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .text-center { text-align: center; }
+    .mt-16 { margin-top: 16px; }
+    .mb-8 { margin-bottom: 8px; }
+    .search-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .search-bar input { flex: 1; min-width: 200px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+    .login-container { max-width: 400px; margin: 80px auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+    .login-container h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+    .login-container input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+    .login-container .btn { width: 100%; padding: 12px; margin-top: 12px; }
+    .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 6px 0; box-shadow: 0 -2px 8px rgba(0,0,0,0.1); border-top: 1px solid #ddd; z-index: 999; flex-wrap: wrap; }
+    .nav-item { text-align: center; color: #7f8c8d; padding: 4px 8px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 11px; text-decoration: none; }
+    .nav-item i { display: block; font-size: 22px; margin-bottom: 2px; }
+    .nav-item.active { color: #3498db; background: #ebf5fb; }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal-box { background: white; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 20px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); }
+    .modal-box h3 { margin-bottom: 16px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+    .modal-close { float: right; cursor: pointer; font-size: 24px; color: #999; }
+    .modal-close:hover { color: #333; }
+    .tag { display: inline-block; background: #ecf0f1; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin: 2px; }
+    .update-log { background: #f8f9fa; padding: 8px; border-radius: 6px; margin: 4px 0; font-size: 13px; }
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .stat-card .number { font-size: 20px; }
+      .app-header { flex-direction: column; align-items: stretch; }
+      .app-header .clock { text-align: left; margin-top: 4px; }
+      .login-container { margin: 40px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ========== LOGIN SCREEN ========== -->
+<div id="loginScreen" class="login-container">
+  <h1>⚡ Shirotech Networks</h1>
+  <form id="loginForm" onsubmit="login(event)">
+    <input type="text" id="loginUsername" placeholder="Username" required />
+    <input type="password" id="loginPassword" placeholder="Password" required />
+    <button type="submit" class="btn btn-success">Login</button>
+    <p style="text-align:center; margin-top:12px; font-size:13px; color:#7f8c8d;">
+      <a href="#" onclick="showResetPassword()">Forgot password?</a>
+    </p>
+    <div id="loginError" style="color:#e74c3c; text-align:center; margin-top:8px;"></div>
+  </form>
+</div>
+
+<!-- ========== MAIN APP ========== -->
+<div id="appScreen" class="hidden">
+  <div class="app-header">
+    <div>
+      <span class="brand">⚡ Shirotech Network Solutions</span>
+      <small style="font-size:12px; color:#bdc3c7;">ISP Billing System</small>
+    </div>
+    <div class="clock" id="clockDisplay">Loading time...</div>
+    <div class="user-info">
+      <span id="currentUserDisplay"></span> |
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </div>
+
+  <div class="container" id="appContainer">
+    <!-- Dynamic content -->
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="nav-bar" id="navBar">
+    <div class="nav-item active" data-page="dashboard"><i class="fas fa-chart-pie"></i> Dashboard</div>
+    <div class="nav-item" data-page="clients"><i class="fas fa-users"></i> Clients</div>
+    <div class="nav-item" data-page="payments"><i class="fas fa-credit-card"></i> Payments</div>
+    <div class="nav-item" data-page="tickets"><i class="fas fa-ticket-alt"></i> Tickets</div>
+    <div class="nav-item admin-only hidden" data-page="settings"><i class="fas fa-cog"></i> Settings</div>
+    <div class="nav-item admin-only hidden" data-page="users"><i class="fas fa-user-cog"></i> Users</div>
+    <div class="nav-item admin-only hidden" data-page="audit"><i class="fas fa-history"></i> Audit</div>
+  </div>
+</div>
+
+<!-- ========== MODAL CONTAINER ========== -->
+<div id="modalContainer"></div>
+
+<script>
+  // ============================================================
+  // DATA LAYER
+  // ============================================================
+  const DB_KEY = 'shirotech_data';
+
+  function getDefaultData() {
+    return {
+      clients: [],
+      payments: [],
+      tickets: [],
+      users: [
+        { username: 'admin', password: 'admin', email: 'akoto820@gmail.com', role: 'admin' }
+      ],
+      auditLog: [],
+      config: {
+        plans: [
+          { name: 'Fiber 50', price: 500 },
+          { name: 'Fiber 100', price: 1000 },
+          { name: 'Fiber 200', price: 1500 },
+          { name: 'Fiber 300', price: 2000 }
+        ],
+        agents: ['Agent A', 'Agent B', 'Agent C', 'Agent D']
+      },
+      nextClientId: 1,
+      nextTicketId: 1,
+      nextUserId: 2
+    };
+  }
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(DB_KEY);
+      if (!raw) return getDefaultData();
+      const data = JSON.parse(raw);
+      if (!data.clients) data.clients = [];
+      if (!data.payments) data.payments = [];
+      if (!data.tickets) data.tickets = [];
+      if (!data.users) data.users = getDefaultData().users;
+      if (!data.auditLog) data.auditLog = [];
+      if (!data.config) data.config = getDefaultData().config;
+      if (!data.config.plans) data.config.plans = getDefaultData().config.plans;
+      if (!data.config.agents) data.config.agents = getDefaultData().config.agents;
+      if (!data.nextClientId) data.nextClientId = 1;
+      if (!data.nextTicketId) data.nextTicketId = 1;
+      if (!data.nextUserId) data.nextUserId = 2;
+      return data;
+    } catch (e) {
+      return getDefaultData();
+    }
+  }
+
+  function saveData(data) {
+    localStorage.setItem(DB_KEY, JSON.stringify(data));
+  }
+
+  // ============================================================
+  // GLOBAL STATE
+  // ============================================================
+  let currentUser = null;
+  let currentPage = 'dashboard';
+  let chartInstance = null;
+
+  // ============================================================
+  // REAL-TIME CLOCK
+  // ============================================================
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clockDisplay').textContent = now.toLocaleString('en-US', {
+      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ============================================================
+  // LOGIN / LOGOUT
+  // ============================================================
+  function login(e) {
+    e.preventDefault();
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+    const data = loadData();
+    const user = data.users.find(u => u.username === username && u.password === password);
+    if (!user) {
+      document.getElementById('loginError').textContent = 'Invalid username or password.';
+      return;
+    }
+    currentUser = { username: user.username, role: user.role };
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('appScreen').classList.remove('hidden');
+    document.getElementById('currentUserDisplay').textContent = user.username + ' (' + user.role + ')';
+    const isAdmin = user.role === 'admin';
+    document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
+    navigateTo('dashboard');
+  }
+
+  function logout() {
+    currentUser = null;
+    document.getElementById('appScreen').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('loginForm').reset();
+  }
+
+  // ============================================================
+  // PASSWORD RESET (simulated)
+  // ============================================================
+  let resetCodes = {};
+
+  function showResetPassword() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Reset Password</h3>
+        <p style="color:#7f8c8d; font-size:14px;">Enter username and registered email.</p>
+        <form id="resetRequestForm" onsubmit="requestReset(event)">
+          <div class="form-group"><label>Username</label><input type="text" id="resetUsername" required></div>
+          <div class="form-group"><label>Email</label><input type="email" id="resetEmail" required></div>
+          <button type="submit" class="btn btn-success btn-block">Request Reset Code</button>
+          <div id="resetStatus" style="margin-top:8px;"></div>
+        </form>
+        <hr>
+        <p style="font-size:14px;">Enter reset code and new password:</p>
+        <form id="resetCodeForm" onsubmit="applyReset(event)">
+          <div class="form-group"><label>Reset Code</label><input type="text" id="resetCode" required></div>
+          <div class="form-group"><label>New Password</label><input type="password" id="newPassword" required></div>
+          <button type="submit" class="btn btn-warning btn-block">Change Password</button>
+          <div id="resetApplyStatus" style="margin-top:8px;"></div>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  function requestReset(e) {
+    e.preventDefault();
+    const username = document.getElementById('resetUsername').value.trim();
+    const email = document.getElementById('resetEmail').value.trim();
+    const data = loadData();
+    const user = data.users.find(u => u.username === username && u.email === email);
+    if (!user) {
+      document.getElementById('resetStatus').innerHTML = '<span style="color:#e74c3c;">User not found or email mismatch.</span>';
+      return;
+    }
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    resetCodes[username] = code;
+    document.getElementById('resetStatus').innerHTML = `
+      <span style="color:#27ae60;">✅ Reset code generated: <strong>${code}</strong><br>
+      (In production this would be emailed to you.)</span>
+    `;
+  }
+
+  function applyReset(e) {
+    e.preventDefault();
+    const code = document.getElementById('resetCode').value.trim();
+    const newPass = document.getElementById('newPassword').value.trim();
+    if (!newPass || newPass.length < 4) {
+      document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#e74c3c;">Password must be at least 4 characters.</span>';
+      return;
+    }
+    let foundUser = null;
+    for (const [user, c] of Object.entries(resetCodes)) {
+      if (c === code) { foundUser = user; break; }
+    }
+    if (!foundUser) {
+      document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#e74c3c;">Invalid reset code.</span>';
+      return;
+    }
+    const data = loadData();
+    const user = data.users.find(u => u.username === foundUser);
+    if (!user) {
+      document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#e74c3c;">User not found.</span>';
+      return;
+    }
+    user.password = newPass;
+    saveData(data);
+    addAuditLog('Password Reset', foundUser, `Password changed via reset.`);
+    delete resetCodes[foundUser];
+    document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#27ae60;">✅ Password updated! You can now login.</span>';
+    setTimeout(() => {
+      const modal = document.querySelector('.modal-overlay');
+      if (modal) modal.remove();
+    }, 2000);
+  }
+
+  function closeModal(element) {
+    const modal = element.closest('.modal-overlay');
+    if (modal) modal.remove();
+  }
+
+  // ============================================================
+  // AUDIT LOG
+  // ============================================================
+  function addAuditLog(action, username, details) {
+    const data = loadData();
+    data.auditLog.push({
+      timestamp: new Date().toISOString(),
+      username: username || (currentUser ? currentUser.username : 'system'),
+      action: action,
+      details: details || ''
+    });
+    saveData(data);
+  }
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+  function getClientsWithBalance(data) {
+    const now = new Date();
+    return data.clients.map(client => {
+      const totalPaid = data.payments
+        .filter(p => p.clientId === client.id)
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+      let monthsDue = 0;
+      const due = new Date(client.dueDate);
+      while (due <= now) {
+        monthsDue++;
+        due.setMonth(due.getMonth() + 1);
+      }
+      const totalDue = monthsDue * Number(client.amount);
+      const balance = Math.max(0, totalDue - totalPaid);
+      return { ...client, balance, totalPaid, totalDue };
+    });
+  }
+
+  function getClientHistory(clientId) {
+    const data = loadData();
+    const payments = data.payments.filter(p => p.clientId === clientId);
+    const client = data.clients.find(c => c.id === clientId);
+    const history = [];
+    payments.forEach(p => {
+      history.push({ date: p.date, type: 'Payment', amount: p.amount, details: p.period || '' });
+    });
+    if (client && client.statusLog) {
+      client.statusLog.forEach(log => {
+        history.push({ date: log.date, type: log.action, details: log.note || '' });
+      });
+    }
+    // Tickets related to this client
+    const tickets = data.tickets.filter(t => t.clientId === clientId);
+    tickets.forEach(t => {
+      history.push({ date: t.createdAt, type: 'Ticket', details: t.subject + ' - ' + t.status });
+    });
+    history.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return history;
+  }
+
+  // ============================================================
+  // NAVIGATION & RENDER
+  // ============================================================
+  function navigateTo(page) {
+    if (!currentUser) return;
+    currentPage = page;
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.page === page);
+    });
+    renderPage(page);
+  }
+
+  function renderPage(page) {
+    const container = document.getElementById('appContainer');
+    const data = loadData();
+    const clientsWithBalance = getClientsWithBalance(data);
+
+    switch(page) {
+      case 'dashboard': renderDashboard(container, data, clientsWithBalance); break;
+      case 'clients': renderClients(container, data, clientsWithBalance); break;
+      case 'payments': renderPayments(container, data, clientsWithBalance); break;
+      case 'tickets': renderTickets(container, data, clientsWithBalance); break;
+      case 'settings': renderSettings(container, data); break;
+      case 'users': renderUsers(container, data); break;
+      case 'audit': renderAudit(container, data); break;
+      default: container.innerHTML = '<p>Page not found</p>';
+    }
+  }
+
+  // ----- DASHBOARD -----
+  function renderDashboard(container, data, clientsWithBalance) {
+    const totalClients = data.clients.length;
+    const activeClients = data.clients.filter(c => c.status === 'Active').length;
+    const totalCollectible = data.clients.filter(c => c.status === 'Active').reduce((sum, c) => sum + Number(c.amount), 0);
+    const totalCollected = data.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const totalBalance = clientsWithBalance.filter(c => c.status === 'Active').reduce((sum, c) => sum + c.balance, 0);
+    const paidCount = clientsWithBalance.filter(c => c.status === 'Active' && c.balance === 0).length;
+    const unpaidCount = clientsWithBalance.filter(c => c.status === 'Active' && c.balance > 0).length;
+    const percentage = totalCollectible > 0 ? ((totalCollected / totalCollectible) * 100) : 0;
+
+    const dueAccounts = clientsWithBalance.filter(c => c.status === 'Active' && c.balance > 0);
+    // Tickets
+    const openTickets = data.tickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
+    const recentTickets = [...data.tickets].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0,5);
+
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-chart-pie"></i> Dashboard</h2>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="number">${totalClients}</div><div class="label">Total Clients</div></div>
+          <div class="stat-card"><div class="number">${activeClients}</div><div class="label">Active</div></div>
+          <div class="stat-card"><div class="number">₱${totalCollectible.toFixed(2)}</div><div class="label">Collectible</div></div>
+          <div class="stat-card"><div class="number">₱${totalCollected.toFixed(2)}</div><div class="label">Collected</div></div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="number">${percentage.toFixed(1)}%</div><div class="label">Collection Rate</div></div>
+          <div class="stat-card"><div class="number">${paidCount}</div><div class="label">Fully Paid</div></div>
+          <div class="stat-card"><div class="number">${unpaidCount}</div><div class="label">With Balance</div></div>
+          <div class="stat-card"><div class="number">${openTickets.length}</div><div class="label">Open Tickets</div></div>
+        </div>
+        <div class="chart-container">
+          <canvas id="dashboardChart"></canvas>
+        </div>
+        <h3 style="margin-top:16px;">📌 Due Accounts (with balance)</h3>
+        ${dueAccounts.length === 0 ? '<p>No due accounts.</p>' : `
+          <div class="table-responsive">
+            <table>
+              <thead><tr><th>Acct #</th><th>Name</th><th>Balance</th></tr></thead>
+              <tbody>
+                ${dueAccounts.map(c => `<tr><td>${c.id}</td><td>${c.name}</td><td class="badge badge-danger">₱${c.balance.toFixed(2)}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+        <h3 style="margin-top:16px;">🛠️ Recent Tickets</h3>
+        ${recentTickets.length === 0 ? '<p>No tickets.</p>' : `
+          <div class="table-responsive">
+            <table>
+              <thead><tr><th>ID</th><th>Client</th><th>Subject</th><th>Status</th></tr></thead>
+              <tbody>
+                ${recentTickets.map(t => {
+                  const client = data.clients.find(c => c.id === t.clientId);
+                  const statusClass = t.status === 'Open' ? 'badge-danger' : t.status === 'In Progress' ? 'badge-warning' : t.status === 'Resolved' ? 'badge-info' : 'badge-success';
+                  return `<tr><td>#${t.id}</td><td>${client ? client.name : 'Unknown'}</td><td>${t.subject}</td><td><span class="badge ${statusClass}">${t.status}</span></td></tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+        <div class="flex mt-16">
+          <button class="btn btn-success" onclick="navigateTo('payments')"><i class="fas fa-plus"></i> Record Payment</button>
+          <button class="btn btn-info" onclick="navigateTo('tickets')"><i class="fas fa-ticket-alt"></i> View Tickets</button>
+          <button class="btn" onclick="navigateTo('clients')"><i class="fas fa-user-plus"></i> Add Client</button>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+
+    // Render chart
+    setTimeout(() => {
+      const ctx = document.getElementById('dashboardChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Paid (No Balance)', 'With Balance'],
+          datasets: [{
+            data: [paidCount, unpaidCount],
+            backgroundColor: ['#27ae60', '#e74c3c'],
+            borderWidth: 0
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+    }, 100);
+  }
+
+  // ----- CLIENTS (with Search) -----
+  function renderClients(container, data, clientsWithBalance) {
+    let html = `
+      <div class="card">
+        <div class="flex-between">
+          <h2><i class="fas fa-users"></i> Clients</h2>
+          <button class="btn btn-success" onclick="showAddClientForm()"><i class="fas fa-plus"></i> Add</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Search by ID, Name, or Contact..." oninput="filterClients()">
+          <button class="btn btn-outline" onclick="document.getElementById('searchInput').value=''; filterClients();">Clear</button>
+        </div>
+        <div id="clientFormContainer"></div>
+        <div id="clientTableContainer">
+          ${buildClientTable(data, clientsWithBalance, '')}
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  function buildClientTable(data, clientsWithBalance, filterText) {
+    let filtered = data.clients;
+    if (filterText) {
+      const f = filterText.toLowerCase();
+      filtered = filtered.filter(c =>
+        c.id.toString().includes(f) ||
+        c.name.toLowerCase().includes(f) ||
+        (c.contact && c.contact.includes(f))
+      );
+    }
+    let rows = '';
+    if (filtered.length === 0) {
+      rows = `<tr><td colspan="9" class="text-center">No clients found.</td></tr>`;
+    } else {
+      filtered.forEach(client => {
+        const balance = clientsWithBalance.find(c => c.id === client.id)?.balance || 0;
+        const statusBadge = client.status === 'Active' ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>';
+        rows += `
+          <tr>
+            <td>${client.id}</td>
+            <td>${client.name}</td>
+            <td>${client.contact || 'N/A'}</td>
+            <td>${client.plan}</td>
+            <td>₱${Number(client.amount).toFixed(2)}</td>
+            <td>${client.dueDate}</td>
+            <td>${statusBadge}</td>
+            <td>
+              <button class="btn btn-warning btn-sm" onclick="editClient(${client.id})"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-info btn-sm" onclick="viewHistory(${client.id})"><i class="fas fa-history"></i></button>
+              <button class="btn btn-primary btn-sm" onclick="showCreateTicket(${client.id})"><i class="fas fa-ticket-alt"></i></button>
+              ${client.status === 'Active' ? `<button class="btn btn-danger btn-sm" onclick="disconnectClient(${client.id})"><i class="fas fa-power-off"></i></button>` :
+                `<button class="btn btn-success btn-sm" onclick="reconnectClient(${client.id})"><i class="fas fa-plug"></i></button>`}
+              <button class="btn btn-danger btn-sm" onclick="deleteClient(${client.id})"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+    return `
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Acct #</th><th>Name</th><th>Contact</th><th>Plan</th><th>Monthly</th><th>Due Date</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function filterClients() {
+    const input = document.getElementById('searchInput');
+    const data = loadData();
+    const clientsWithBalance = getClientsWithBalance(data);
+    const tableContainer = document.getElementById('clientTableContainer');
+    if (tableContainer) {
+      tableContainer.innerHTML = buildClientTable(data, clientsWithBalance, input.value);
+    }
+  }
+
+  // ----- CLIENT CRUD -----
+  function showAddClientForm() {
+    const data = loadData();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Add New Client</h3>
+        <form id="addClientForm" onsubmit="addClient(event)">
+          <div class="form-group"><label>Name *</label><input type="text" id="cName" required></div>
+          <div class="form-group"><label>Contact #</label><input type="text" id="cContact"></div>
+          <div class="form-group"><label>Address</label><input type="text" id="cAddress"></div>
+          <div class="form-group">
+            <label>Plan</label>
+            <select id="cPlan" onchange="autoFillPrice('cPlan','cAmount')"></select>
+          </div>
+          <div class="form-group"><label>Monthly Amount *</label><input type="number" id="cAmount" step="0.01" required></div>
+          <div class="form-group"><label>Installation Date</label><input type="date" id="cInstallDate"></div>
+          <div class="form-group"><label>Account Name</label><input type="text" id="cAccount"></div>
+          <div class="form-group"><label>Napbox</label><input type="text" id="cNapbox"></div>
+          <div class="form-group">
+            <label>Agent</label>
+            <select id="cAgent"></select>
+          </div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Save</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+    populatePlanSelect('cPlan', data);
+    populateAgentSelect('cAgent', data);
+    document.getElementById('cInstallDate').value = new Date().toISOString().split('T')[0];
+  }
+
+  function populatePlanSelect(id, data) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = data.config.plans.map(p => `<option value="${p.name}" data-price="${p.price}">${p.name} (₱${p.price})</option>`).join('');
+  }
+
+  function populateAgentSelect(id, data) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = data.config.agents.map(a => `<option value="${a}">${a}</option>`).join('');
+  }
+
+  function autoFillPrice(planId, amountId) {
+    const planSel = document.getElementById(planId);
+    const price = planSel.options[planSel.selectedIndex]?.dataset?.price;
+    if (price) {
+      document.getElementById(amountId).value = price;
+    }
+  }
+
+  function addClient(e) {
+    e.preventDefault();
+    const data = loadData();
+    const name = document.getElementById('cName').value.trim();
+    if (!name) return alert('Name is required.');
+    const amount = parseFloat(document.getElementById('cAmount').value);
+    if (isNaN(amount) || amount <= 0) return alert('Valid amount required.');
+    const installDate = document.getElementById('cInstallDate').value || new Date().toISOString().split('T')[0];
+    const due = new Date(installDate);
+    due.setMonth(due.getMonth() + 1);
+    const dueDate = due.toISOString().split('T')[0];
+
+    const newClient = {
+      id: data.nextClientId++,
+      name: name,
+      contact: document.getElementById('cContact').value.trim() || '',
+      address: document.getElementById('cAddress').value || '',
+      plan: document.getElementById('cPlan').value,
+      amount: amount,
+      installDate: installDate,
+      dueDate: dueDate,
+      accountName: document.getElementById('cAccount').value || '',
+      napbox: document.getElementById('cNapbox').value || '',
+      agent: document.getElementById('cAgent').value,
+      status: 'Active',
+      statusLog: []
+    };
+    data.clients.push(newClient);
+    saveData(data);
+    addAuditLog('Client Added', currentUser.username, `Added client #${newClient.id}: ${newClient.name}`);
+    closeModal(document.querySelector('.modal-overlay .modal-close'));
+    navigateTo('clients');
+  }
+
+  function editClient(id) {
+    const data = loadData();
+    const client = data.clients.find(c => c.id === id);
+    if (!client) return;
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Edit Client #${client.id}</h3>
+        <form id="editClientForm" onsubmit="updateClient(event, ${client.id})">
+          <div class="form-group"><label>Name *</label><input type="text" id="eName" value="${client.name}" required></div>
+          <div class="form-group"><label>Contact #</label><input type="text" id="eContact" value="${client.contact || ''}"></div>
+          <div class="form-group"><label>Address</label><input type="text" id="eAddress" value="${client.address || ''}"></div>
+          <div class="form-group">
+            <label>Plan</label>
+            <select id="ePlan" onchange="autoFillPrice('ePlan','eAmount')"></select>
+          </div>
+          <div class="form-group"><label>Monthly Amount</label><input type="number" id="eAmount" step="0.01" value="${client.amount}" required></div>
+          <div class="form-group"><label>Installation Date</label><input type="date" id="eInstallDate" value="${client.installDate}"></div>
+          <div class="form-group"><label>Account Name</label><input type="text" id="eAccount" value="${client.accountName || ''}"></div>
+          <div class="form-group"><label>Napbox</label><input type="text" id="eNapbox" value="${client.napbox || ''}"></div>
+          <div class="form-group">
+            <label>Agent</label>
+            <select id="eAgent"></select>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="eStatus"><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+          </div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Update</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+    populatePlanSelect('ePlan', data);
+    populateAgentSelect('eAgent', data);
+    document.getElementById('ePlan').value = client.plan;
+    document.getElementById('eAgent').value = client.agent;
+    document.getElementById('eStatus').value = client.status;
+  }
+
+  function updateClient(e, id) {
+    e.preventDefault();
+    const data = loadData();
+    const client = data.clients.find(c => c.id === id);
+    if (!client) return;
+    const name = document.getElementById('eName').value.trim();
+    if (!name) return alert('Name required.');
+    const amount = parseFloat(document.getElementById('eAmount').value);
+    if (isNaN(amount) || amount <= 0) return alert('Valid amount required.');
+    const installDate = document.getElementById('eInstallDate').value || client.installDate;
+    let dueDate = client.dueDate;
+    if (installDate !== client.installDate) {
+      const due = new Date(installDate);
+      due.setMonth(due.getMonth() + 1);
+      dueDate = due.toISOString().split('T')[0];
+    }
+    const oldStatus = client.status;
+    const newStatus = document.getElementById('eStatus').value;
+    client.name = name;
+    client.contact = document.getElementById('eContact').value.trim() || '';
+    client.address = document.getElementById('eAddress').value || '';
+    client.plan = document.getElementById('ePlan').value;
+    client.amount = amount;
+    client.installDate = installDate;
+    client.dueDate = dueDate;
+    client.accountName = document.getElementById('eAccount').value || '';
+    client.napbox = document.getElementById('eNapbox').value || '';
+    client.agent = document.getElementById('eAgent').value;
+    client.status = newStatus;
+    if (oldStatus !== newStatus) {
+      if (!client.statusLog) client.statusLog = [];
+      client.statusLog.push({
+        date: new Date().toISOString().split('T')[0],
+        action: newStatus === 'Active' ? 'Reconnected' : 'Disconnected',
+        note: `Status changed from ${oldStatus} to ${newStatus}`
+      });
+    }
+    saveData(data);
+    addAuditLog('Client Updated', currentUser.username, `Client #${id} updated.`);
+    closeModal(document.querySelector('.modal-overlay .modal-close'));
+    navigateTo('clients');
+  }
+
+  function deleteClient(id) {
+    if (!confirm('Permanently delete this client?')) return;
+    const data = loadData();
+    const client = data.clients.find(c => c.id === id);
+    if (!client) return;
+    data.clients = data.clients.filter(c => c.id !== id);
+    saveData(data);
+    addAuditLog('Client Deleted', currentUser.username, `Deleted client #${id}: ${client.name}`);
+    navigateTo('clients');
+  }
+
+  function disconnectClient(id) {
+    if (!confirm('Disconnect this client?')) return;
+    const data = loadData();
+    const client = data.clients.find(c => c.id === id);
+    if (!client || client.status !== 'Active') return alert('Client is not active.');
+    client.status = 'Inactive';
+    if (!client.statusLog) client.statusLog = [];
+    client.statusLog.push({ date: new Date().toISOString().split('T')[0], action: 'Disconnected', note: 'Manually disconnected' });
+    saveData(data);
+    addAuditLog('Client Disconnected', currentUser.username, `Client #${id} disconnected.`);
+    navigateTo('clients');
+  }
+
+  function reconnectClient(id) {
+    if (!confirm('Reconnect this client?')) return;
+    const data = loadData();
+    const client = data.clients.find(c => c.id === id);
+    if (!client || client.status !== 'Inactive') return alert('Client is not inactive.');
+    client.status = 'Active';
+    if (!client.statusLog) client.statusLog = [];
+    client.statusLog.push({ date: new Date().toISOString().split('T')[0], action: 'Reconnected', note: 'Manually reconnected' });
+    saveData(data);
+    addAuditLog('Client Reconnected', currentUser.username, `Client #${id} reconnected.`);
+    navigateTo('clients');
+  }
+
+  function viewHistory(id) {
+    const data = loadData();
+    const client = data.clients.find(c => c.id === id);
+    if (!client) return;
+    const history = getClientHistory(id);
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box" style="max-width:700px;">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>History for #${client.id} - ${client.name}</h3>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Date</th><th>Type</th><th>Details</th></tr></thead>
+            <tbody>
+              ${history.length === 0 ? '<tr><td colspan="3" class="text-center">No history.</td></tr>' :
+                history.map(h => `
+                  <tr>
+                    <td>${h.date}</td>
+                    <td>${h.type}</td>
+                    <td>${h.type === 'Payment' ? '₱' + Number(h.amount).toFixed(2) : h.details}</td>
+                  </tr>
+                `).join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  // ----- TICKET CREATION (from client actions) -----
+  function showCreateTicket(clientId) {
+    const data = loadData();
+    const client = data.clients.find(c => c.id === clientId);
+    if (!client) return;
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Create Ticket for ${client.name} (Acct #${client.id})</h3>
+        <form id="ticketForm" onsubmit="createTicket(event, ${clientId})">
+          <div class="form-group"><label>Subject *</label><input type="text" id="tSubject" required placeholder="e.g., Internet down"></div>
+          <div class="form-group"><label>Description</label><textarea id="tDescription" rows="3"></textarea></div>
+          <div class="form-group">
+            <label>Priority</label>
+            <select id="tPriority"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option><option value="Critical">Critical</option></select>
+          </div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Create Ticket</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  function createTicket(e, clientId) {
+    e.preventDefault();
+    const data = loadData();
+    const subject = document.getElementById('tSubject').value.trim();
+    if (!subject) return alert('Subject required.');
+    const description = document.getElementById('tDescription').value.trim();
+    const priority = document.getElementById('tPriority').value;
+    const ticket = {
+      id: data.nextTicketId++,
+      clientId: clientId,
+      subject: subject,
+      description: description,
+      priority: priority,
+      status: 'Open',
+      createdAt: new Date().toISOString().split('T')[0],
+      updates: []
+    };
+    data.tickets.push(ticket);
+    saveData(data);
+    addAuditLog('Ticket Created', currentUser.username, `Ticket #${ticket.id} for client #${clientId}: ${subject}`);
+    closeModal(document.querySelector('.modal-overlay .modal-close'));
+    navigateTo('tickets');
+  }
+
+  // ----- TICKETS PAGE -----
+  function renderTickets(container, data, clientsWithBalance) {
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-ticket-alt"></i> Tickets</h2>
+        <div class="flex">
+          <button class="btn btn-success" onclick="showCreateTicketAny()"><i class="fas fa-plus"></i> New Ticket</button>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>ID</th><th>Client</th><th>Subject</th><th>Priority</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${data.tickets.length === 0 ? '<tr><td colspan="7" class="text-center">No tickets.</td></tr>' :
+                [...data.tickets].reverse().map(t => {
+                  const client = data.clients.find(c => c.id === t.clientId);
+                  const statusClass = t.status === 'Open' ? 'badge-danger' : t.status === 'In Progress' ? 'badge-warning' : t.status === 'Resolved' ? 'badge-info' : 'badge-success';
+                  const priorityClass = t.priority === 'Critical' ? 'badge-danger' : t.priority === 'High' ? 'badge-warning' : 'badge-info';
+                  return `<tr>
+                    <td>#${t.id}</td>
+                    <td>${client ? client.name : 'Unknown'}</td>
+                    <td>${t.subject}</td>
+                    <td><span class="badge ${priorityClass}">${t.priority}</span></td>
+                    <td><span class="badge ${statusClass}">${t.status}</span></td>
+                    <td>${t.createdAt}</td>
+                    <td>
+                      <button class="btn btn-info btn-sm" onclick="viewTicket(${t.id})"><i class="fas fa-eye"></i></button>
+                      <button class="btn btn-warning btn-sm" onclick="updateTicketStatus(${t.id})"><i class="fas fa-edit"></i></button>
+                    </td>
+                  </tr>`;
+                }).join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  function showCreateTicketAny() {
+    const data = loadData();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Create Ticket</h3>
+        <form id="ticketFormAny" onsubmit="createTicketAny(event)">
+          <div class="form-group">
+            <label>Client</label>
+            <select id="tClientAny" required>
+              <option value="">-- Select --</option>
+              ${data.clients.map(c => `<option value="${c.id}">${c.id} - ${c.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group"><label>Subject *</label><input type="text" id="tSubjectAny" required></div>
+          <div class="form-group"><label>Description</label><textarea id="tDescAny" rows="3"></textarea></div>
+          <div class="form-group"><label>Priority</label><select id="tPriorityAny"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Create</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  function createTicketAny(e) {
+    e.preventDefault();
+    const data = loadData();
+    const clientId = parseInt(document.getElementById('tClientAny').value);
+    if (!clientId) return alert('Select client.');
+    const subject = document.getElementById('tSubjectAny').value.trim();
+    if (!subject) return alert('Subject required.');
+    const description = document.getElementById('tDescAny').value.trim();
+    const priority = document.getElementById('tPriorityAny').value;
+    const ticket = {
+      id: data.nextTicketId++,
+      clientId: clientId,
+      subject: subject,
+      description: description,
+      priority: priority,
+      status: 'Open',
+      createdAt: new Date().toISOString().split('T')[0],
+      updates: []
+    };
+    data.tickets.push(ticket);
+    saveData(data);
+    addAuditLog('Ticket Created', currentUser.username, `Ticket #${ticket.id} for client #${clientId}: ${subject}`);
+    closeModal(document.querySelector('.modal-overlay .modal-close'));
+    navigateTo('tickets');
+  }
+
+  function viewTicket(id) {
+    const data = loadData();
+    const ticket = data.tickets.find(t => t.id === id);
+    if (!ticket) return;
+    const client = data.clients.find(c => c.id === ticket.clientId);
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    let updatesHtml = ticket.updates && ticket.updates.length > 0 ?
+      ticket.updates.map(u => `<div class="update-log"><strong>${u.date}</strong> - ${u.status}: ${u.note}</div>`).join('') :
+      '<p>No updates yet.</p>';
+    modal.innerHTML = `
+      <div class="modal-box" style="max-width:700px;">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Ticket #${ticket.id} - ${ticket.subject}</h3>
+        <p><strong>Client:</strong> ${client ? client.name : 'Unknown'}</p>
+        <p><strong>Priority:</strong> ${ticket.priority}</p>
+        <p><strong>Status:</strong> ${ticket.status}</p>
+        <p><strong>Created:</strong> ${ticket.createdAt}</p>
+        <p><strong>Description:</strong> ${ticket.description || 'N/A'}</p>
+        <h4>Progress Updates</h4>
+        ${updatesHtml}
+        <hr>
+        <form onsubmit="addTicketUpdate(event, ${id})">
+          <div class="form-group">
+            <label>Add Update</label>
+            <select id="updateStatus">
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Note</label><textarea id="updateNote" rows="2"></textarea></div>
+          <button type="submit" class="btn btn-primary btn-block">Add Update</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  function addTicketUpdate(e, id) {
+    e.preventDefault();
+    const data = loadData();
+    const ticket = data.tickets.find(t => t.id === id);
+    if (!ticket) return;
+    const newStatus = document.getElementById('updateStatus').value;
+    const note = document.getElementById('updateNote').value.trim() || 'No details.';
+    if (!ticket.updates) ticket.updates = [];
+    ticket.updates.push({
+      date: new Date().toISOString().split('T')[0],
+      status: newStatus,
+      note: note
+    });
+    ticket.status = newStatus;
+    saveData(data);
+    addAuditLog('Ticket Updated', currentUser.username, `Ticket #${id} status changed to ${newStatus}`);
+    closeModal(document.querySelector('.modal-overlay .modal-close'));
+    navigateTo('tickets');
+  }
+
+  function updateTicketStatus(id) {
+    // quick update via modal? we can reuse viewTicket.
+    viewTicket(id);
+  }
+
+  // ----- PAYMENTS (unchanged from previous version, but we'll keep) -----
+  function renderPayments(container, data, clientsWithBalance) {
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-credit-card"></i> Record Payment</h2>
+        <form id="paymentForm" onsubmit="recordPayment(event)">
+          <div class="form-group">
+            <label>Client</label>
+            <select id="payClient" required onchange="updatePayAmount()">
+              <option value="">-- Select --</option>
+              ${data.clients.filter(c => c.status === 'Active').map(c => {
+                const bal = clientsWithBalance.find(b => b.id === c.id)?.balance || 0;
+                return `<option value="${c.id}" data-balance="${bal}">${c.id} - ${c.name} (Balance: ₱${bal.toFixed(2)})</option>`;
+              }).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="payFull" onchange="togglePayFull()"> Pay Full Balance
+            </label>
+          </div>
+          <div class="form-group"><label>Amount</label><input type="number" id="payAmount" step="0.01" required></div>
+          <div class="form-group"><label>Payment Date</label><input type="date" id="payDate" required></div>
+          <div class="form-group"><label>Period Covered</label><input type="text" id="payPeriod" placeholder="Month Year"></div>
+          <div class="form-group"><label>OR Number</label><input type="text" id="payOR"></div>
+          <div class="form-group"><label>Payment Method</label><select id="payMethod"><option>Cash</option><option>GCash</option><option>Bank Transfer</option></select></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Save Payment</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Payment History</h2>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Client</th><th>Amount</th><th>Date</th><th>Period</th><th>OR</th></tr></thead>
+            <tbody>
+              ${data.payments.length === 0 ? '<tr><td colspan="5" class="text-center">No payments.</td></tr>' :
+                [...data.payments].reverse().map(p => {
+                  const client = data.clients.find(c => c.id === p.clientId);
+                  return `<tr><td>${client ? client.name : 'Unknown'}</td><td>₱${Number(p.amount).toFixed(2)}</td><td>${p.date}</td><td>${p.period || 'N/A'}</td><td>${p.orNumber || 'N/A'}</td></tr>`;
+                }).join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+    document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+  }
+
+  function togglePayFull() {
+    const checked = document.getElementById('payFull').checked;
+    const clientSelect = document.getElementById('payClient');
+    const amountInput = document.getElementById('payAmount');
+    if (checked && clientSelect.value) {
+      const bal = parseFloat(clientSelect.options[clientSelect.selectedIndex].dataset.balance) || 0;
+      amountInput.value = bal.toFixed(2);
+      amountInput.disabled = true;
+    } else {
+      amountInput.disabled = false;
+      amountInput.value = '';
+    }
+  }
+
+  function updatePayAmount() {
+    if (document.getElementById('payFull').checked) {
+      togglePayFull();
+    }
+  }
+
+  function recordPayment(e) {
+    e.preventDefault();
+    const data = loadData();
+    const clientId = parseInt(document.getElementById('payClient').value);
+    if (!clientId) return alert('Select a client.');
+    const amount = parseFloat(document.getElementById('payAmount').value);
+    if (isNaN(amount) || amount <= 0) return alert('Valid amount required.');
+    const date = document.getElementById('payDate').value;
+    if (!date) return alert('Payment date required.');
+    const period = document.getElementById('payPeriod').value.trim() || '';
+    const orNumber = document.getElementById('payOR').value.trim() || '';
+    const method = document.getElementById('payMethod').value;
+
+    const payment = { clientId, amount, date, period, orNumber, method };
+    data.payments.push(payment);
+    saveData(data);
+    addAuditLog('Payment Recorded', currentUser.username, `Payment of ₱${amount} for client #${clientId}`);
+    document.getElementById('paymentForm').reset();
+    document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+    alert('Payment saved.');
+    navigateTo('payments');
+  }
+
+  // ----- BALANCES (unchanged) -----
+  function renderBalances(container, data, clientsWithBalance) {
+    const totalBalance = clientsWithBalance.reduce((sum, c) => sum + c.balance, 0);
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-coins"></i> Outstanding Balances</h2>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="number">${clientsWithBalance.filter(c => c.balance > 0).length}</div><div class="label">With Balance</div></div>
+          <div class="stat-card"><div class="number">₱${totalBalance.toFixed(2)}</div><div class="label">Total Balance</div></div>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Acct #</th><th>Name</th><th>Plan</th><th>Monthly</th><th>Balance</th></tr></thead>
+            <tbody>
+              ${clientsWithBalance.length === 0 ? '<tr><td colspan="5" class="text-center">No active clients.</td></tr>' :
+                clientsWithBalance.map(c => {
+                  const balClass = c.balance > 0 ? 'badge-danger' : 'badge-success';
+                  return `<tr><td>${c.id}</td><td>${c.name}</td><td>${c.plan}</td><td>₱${Number(c.amount).toFixed(2)}</td><td><span class="badge ${balClass}">₱${c.balance.toFixed(2)}</span></td></tr>`;
+                }).join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  // ----- SETTINGS (admin only) - updated for plans with prices -----
+  function renderSettings(container, data) {
+    if (currentUser.role !== 'admin') {
+      container.innerHTML = '<div class="card"><p>Access denied. Admins only.</p></div>';
+      return;
+    }
+    const plans = data.config.plans || [];
+    const agents = data.config.agents || [];
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-cog"></i> Settings</h2>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div>
+            <h3>Plans (with Price)</h3>
+            <div id="planList">
+              ${plans.map((p, idx) => `
+                <div class="flex-between" style="margin:4px 0; align-items:center;">
+                  <span>${p.name} - ₱${p.price}</span>
+                  <button class="btn btn-danger btn-sm" onclick="removePlan(${idx})"><i class="fas fa-times"></i></button>
+                </div>
+              `).join('')}
+            </div>
+            <div style="margin-top:8px;">
+              <div class="flex">
+                <input type="text" id="newPlanName" placeholder="Plan name" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                <input type="number" id="newPlanPrice" placeholder="Price" style="width:100px; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                <button class="btn btn-success" onclick="addPlan()">Add</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3>Agents</h3>
+            <div id="agentList">
+              ${agents.map(a => `<div class="flex-between" style="margin:4px 0;"><span>${a}</span><button class="btn btn-danger btn-sm" onclick="removeAgent('${a}')"><i class="fas fa-times"></i></button></div>`).join('')}
+            </div>
+            <div class="flex" style="margin-top:8px;">
+              <input type="text" id="newAgentInput" placeholder="New agent name" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
+              <button class="btn btn-success" onclick="addAgent()">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  function addPlan() {
+    const name = document.getElementById('newPlanName').value.trim();
+    const price = parseFloat(document.getElementById('newPlanPrice').value);
+    if (!name) return alert('Enter plan name.');
+    if (isNaN(price) || price <= 0) return alert('Enter valid price.');
+    const data = loadData();
+    if (data.config.plans.find(p => p.name === name)) return alert('Plan already exists.');
+    data.config.plans.push({ name, price });
+    saveData(data);
+    addAuditLog('Plan Added', currentUser.username, `Added plan ${name} with price ${price}`);
+    navigateTo('settings');
+  }
+
+  function removePlan(idx) {
+    const data = loadData();
+    const plan = data.config.plans[idx];
+    if (!plan) return;
+    if (!confirm(`Remove plan "${plan.name}"?`)) return;
+    data.config.plans.splice(idx, 1);
+    saveData(data);
+    addAuditLog('Plan Removed', currentUser.username, `Removed plan ${plan.name}`);
+    navigateTo('settings');
+  }
+
+  function addAgent() {
+    const name = document.getElementById('newAgentInput').value.trim();
+    if (!name) return alert('Enter agent name.');
+    const data = loadData();
+    if (data.config.agents.includes(name)) return alert('Agent already exists.');
+    data.config.agents.push(name);
+    saveData(data);
+    addAuditLog('Agent Added', currentUser.username, `Added agent ${name}`);
+    navigateTo('settings');
+  }
+
+  function removeAgent(name) {
+    if (!confirm(`Remove agent "${name}"?`)) return;
+    const data = loadData();
+    data.config.agents = data.config.agents.filter(a => a !== name);
+    saveData(data);
+    addAuditLog('Agent Removed', currentUser.username, `Removed agent ${name}`);
+    navigateTo('settings');
+  }
+
+  // ----- USERS (admin only) -----
+  function renderUsers(container, data) {
+    if (currentUser.role !== 'admin') {
+      container.innerHTML = '<div class="card"><p>Access denied. Admins only.</p></div>';
+      return;
+    }
+    let html = `
+      <div class="card">
+        <div class="flex-between">
+          <h2><i class="fas fa-user-cog"></i> Manage Users</h2>
+          <button class="btn btn-success" onclick="showAddUserForm()"><i class="fas fa-user-plus"></i> Add User</button>
+        </div>
+        <div id="userFormContainer"></div>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Username</th><th>Role</th><th>Email</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${data.users.map(user => {
+                const isSelf = user.username === currentUser.username;
+                return `<tr><td>${user.username}</td><td>${user.role}</td><td>${user.email || 'N/A'}</td><td>${!isSelf ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${user.username}')"><i class="fas fa-trash"></i></button>` : '<span style="color:#999;">(you)</span>'}</td></tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  function showAddUserForm() {
+    if (currentUser.role !== 'admin') return;
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Add New User</h3>
+        <form id="addUserForm" onsubmit="addUser(event)">
+          <div class="form-group"><label>Username *</label><input type="text" id="uUsername" required></div>
+          <div class="form-group"><label>Password *</label><input type="password" id="uPassword" required></div>
+          <div class="form-group"><label>Email</label><input type="email" id="uEmail"></div>
+          <div class="form-group"><label>Role</label><select id="uRole"><option value="user">User</option><option value="admin">Admin</option></select></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Add User</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  function addUser(e) {
+    e.preventDefault();
+    const data = loadData();
+    const username = document.getElementById('uUsername').value.trim();
+    if (!username) return alert('Username required.');
+    if (data.users.find(u => u.username === username)) {
+      alert('Username already exists.');
+      return;
+    }
+    const password = document.getElementById('uPassword').value.trim();
+    if (!password || password.length < 4) return alert('Password at least 4 characters.');
+    const email = document.getElementById('uEmail').value.trim() || '';
+    const role = document.getElementById('uRole').value;
+    data.users.push({ username, password, email, role });
+    saveData(data);
+    addAuditLog('User Added', currentUser.username, `Added user ${username} (${role})`);
+    closeModal(document.querySelector('.modal-overlay .modal-close'));
+    navigateTo('users');
+  }
+
+  function deleteUser(username) {
+    if (username === currentUser.username) {
+      alert('You cannot delete yourself.');
+      return;
+    }
+    if (!confirm(`Delete user "${username}"?`)) return;
+    const data = loadData();
+    data.users = data.users.filter(u => u.username !== username);
+    saveData(data);
+    addAuditLog('User Deleted', currentUser.username, `Deleted user ${username}`);
+    navigateTo('users');
+  }
+
+  // ----- AUDIT LOG (admin only) -----
+  function renderAudit(container, data) {
+    if (currentUser.role !== 'admin') {
+      container.innerHTML = '<div class="card"><p>Access denied. Admins only.</p></div>';
+      return;
+    }
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-history"></i> Audit Log</h2>
+        <div class="table-responsive">
+          <table>
+            <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+            <tbody>
+              ${data.auditLog.length === 0 ? '<tr><td colspan="4" class="text-center">No logs.</td></tr>' :
+                [...data.auditLog].reverse().map(log => `
+                  <tr><td>${new Date(log.timestamp).toLocaleString()}</td><td>${log.username}</td><td>${log.action}</td><td>${log.details || ''}</td></tr>
+                `).join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', function() {
+        if (currentUser) navigateTo(this.dataset.page);
+      });
+    });
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('appScreen').classList.add('hidden');
+  });
+
+  // ============================================================
+  // GLOBAL EXPOSURE (for inline onclick)
+  // ============================================================
+  window.showAddClientForm = showAddClientForm;
+  window.editClient = editClient;
+  window.deleteClient = deleteClient;
+  window.disconnectClient = disconnectClient;
+  window.reconnectClient = reconnectClient;
+  window.viewHistory = viewHistory;
+  window.filterClients = filterClients;
+  window.togglePayFull = togglePayFull;
+  window.updatePayAmount = updatePayAmount;
+  window.addPlan = addPlan;
+  window.removePlan = removePlan;
+  window.addAgent = addAgent;
+  window.removeAgent = removeAgent;
+  window.showAddUserForm = showAddUserForm;
+  window.deleteUser = deleteUser;
+  window.showCreateTicket = showCreateTicket;
+  window.showCreateTicketAny = showCreateTicketAny;
+  window.viewTicket = viewTicket;
+  window.updateTicketStatus = updateTicketStatus;
+  window.addTicketUpdate = addTicketUpdate;
+  window.closeModal = closeModal;
+  window.showResetPassword = showResetPassword;
+  window.navigateTo = navigateTo;
+  window.autoFillPrice = autoFillPrice;
+</script>
+</body>
+</html>
