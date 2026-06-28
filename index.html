@@ -1,504 +1,1758 @@
-// ============================================================
-// SHIROTECH BILLING API - WITH CLEAR ALL CLIENTS
-// ============================================================
-
-function doGet(e) {
-  return handleRequest(e);
-}
-
-function doPost(e) {
-  return handleRequest(e);
-}
-
-function handleRequest(e) {
-  try {
-    var action = e && e.parameter ? e.parameter.action : null;
-    var data = e && e.parameter && e.parameter.data ? JSON.parse(e.parameter.data) : null;
-    
-    if (!action) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Missing action parameter'
-      })).setMimeType(ContentService.MimeType.JSON);
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shirotech Network Solutions</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding-bottom: 70px; }
+    .hidden { display: none !important; }
+    .app-header { background: #1a2a3a; color: white; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .app-header .brand { font-size: 20px; font-weight: bold; }
+    .app-header .brand small { font-size: 13px; font-weight: normal; display: block; color: #bdc3c7; }
+    .app-header .clock { font-size: 14px; color: #bdc3c7; text-align: right; }
+    .app-header .user-info { font-size: 14px; color: #ecf0f1; margin: 0 12px; }
+    .app-header .user-info a { color: #bdc3c7; text-decoration: underline; cursor: pointer; }
+    .app-header .user-info a:hover { color: #fff; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+    .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 16px; }
+    .card h2 { border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-bottom: 16px; color: #2c3e50; font-size: 20px; }
+    .card h2 i { margin-right: 8px; }
+    .btn { display: inline-block; padding: 10px 16px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 4px; }
+    .btn:hover { opacity: 0.8; }
+    .btn-success { background: #27ae60; }
+    .btn-danger { background: #e74c3c; }
+    .btn-warning { background: #f39c12; }
+    .btn-info { background: #17a2b8; }
+    .btn-outline { background: transparent; border: 1px solid #3498db; color: #3498db; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; }
+    .btn-block { display: block; width: 100%; margin: 8px 0; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; font-family: inherit; }
+    .table-responsive { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { background: #ecf0f1; text-align: left; padding: 10px; position: sticky; top: 0; z-index: 10; }
+    td { padding: 10px; border-bottom: 1px solid #ecf0f1; vertical-align: middle; }
+    .clickable-address { color: #3498db; cursor: pointer; text-decoration: underline; }
+    .clickable-address:hover { color: #2980b9; }
+    .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+    .badge-success { background: #d4edda; color: #155724; }
+    .badge-danger { background: #f8d7da; color: #721c24; }
+    .badge-warning { background: #fff3cd; color: #856404; }
+    .badge-info { background: #d1ecf1; color: #0c5460; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 16px 0; }
+    .stat-card { background: #f8f9fa; padding: 16px; border-radius: 8px; text-align: center; }
+    .stat-card .number { font-size: 24px; font-weight: bold; color: #2c3e50; }
+    .stat-card .label { font-size: 13px; color: #7f8c8d; }
+    .chart-container { height: 200px; margin: 16px 0; }
+    .flex { display: flex; gap: 8px; flex-wrap: wrap; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .text-center { text-align: center; }
+    .mt-16 { margin-top: 16px; }
+    .mb-8 { margin-bottom: 8px; }
+    .search-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .search-bar input { flex: 1; min-width: 200px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+    .search-bar .search-hint { font-size: 12px; color: #7f8c8d; }
+    .login-container { max-width: 400px; margin: 80px auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+    .login-container h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+    .login-container input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+    .login-container .btn { width: 100%; padding: 12px; margin-top: 12px; }
+    .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 6px 0; box-shadow: 0 -2px 8px rgba(0,0,0,0.1); border-top: 1px solid #ddd; z-index: 999; flex-wrap: wrap; }
+    .nav-item { text-align: center; color: #7f8c8d; padding: 4px 8px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 11px; text-decoration: none; }
+    .nav-item i { display: block; font-size: 22px; margin-bottom: 2px; }
+    .nav-item.active { color: #3498db; background: #ebf5fb; }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal-box { background: white; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 20px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); }
+    .modal-box h3 { margin-bottom: 16px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+    .modal-close { float: right; cursor: pointer; font-size: 24px; color: #999; }
+    .modal-close:hover { color: #333; }
+    .sync-status { font-size: 12px; color: #27ae60; margin-left: 8px; }
+    .sync-status.error { color: #e74c3c; }
+    .update-log { background: #f8f9fa; padding: 8px; border-radius: 6px; margin: 4px 0; font-size: 13px; }
+    .btn-clear-all { background: #e74c3c; color: white; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+    .btn-clear-all:hover { background: #c0392b; }
+    [title] { position: relative; cursor: pointer; }
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .stat-card .number { font-size: 20px; }
+      .app-header { flex-direction: column; align-items: stretch; }
+      .app-header .clock { text-align: left; margin-top: 4px; }
+      .login-container { margin: 40px 16px; }
+      table { font-size: 12px; }
+      th, td { padding: 6px; }
     }
-    
-    switch(action) {
-      case 'getClients':
-        return getClients();
-      case 'addClient':
-        return addClient(data);
-      case 'updateClient':
-        return updateClient(data);
-      case 'deleteClient':
-        return deleteClient(data ? data.id : null);
-      case 'clearAllClients':
-        return clearAllClients();
-      case 'getPayments':
-        return getPayments(data ? data.clientId : null);
-      case 'addPayment':
-        return addPayment(data);
-      case 'getTickets':
-        return getTickets();
-      case 'addTicket':
-        return addTicket(data);
-      case 'updateTicket':
-        return updateTicket(data);
-      case 'getDashboard':
-        return getDashboard();
-      default:
-        return ContentService.createTextOutput(JSON.stringify({
-          success: false,
-          error: 'Unknown action: ' + action
-        })).setMimeType(ContentService.MimeType.JSON);
-    }
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+  </style>
+</head>
+<body>
+
+<!-- ========== LOGIN SCREEN ========== -->
+<div id="loginScreen" class="login-container">
+  <h1>⚡ Shirotech Networks</h1>
+  <form id="loginForm" onsubmit="login(event)">
+    <input type="text" id="loginUsername" placeholder="Username" required />
+    <input type="password" id="loginPassword" placeholder="Password" required />
+    <button type="submit" class="btn btn-success">Login</button>
+    <p style="text-align:center; margin-top:12px; font-size:13px; color:#7f8c8d;">
+      <a href="#" onclick="showResetPassword()">Forgot password?</a>
+    </p>
+    <div id="loginError" style="color:#e74c3c; text-align:center; margin-top:8px;"></div>
+  </form>
+</div>
+
+<!-- ========== MAIN APP ========== -->
+<div id="appScreen" class="hidden">
+  <div class="app-header">
+    <div>
+      <span class="brand">⚡ Shirotech Network Solutions</span>
+      <small style="font-size:12px; color:#bdc3c7;">ISP Billing System</small>
+    </div>
+    <div class="clock" id="clockDisplay">Loading time...</div>
+    <div class="user-info">
+      <span id="currentUserDisplay"></span> |
+      <a href="#" onclick="showChangePassword()"><i class="fas fa-key"></i> Change Password</a> |
+      <a href="#" onclick="logout()">Logout</a>
+      <span id="syncStatus" class="sync-status"><i class="fas fa-cloud"></i> Synced</span>
+    </div>
+  </div>
+
+  <div class="container" id="appContainer">
+    <!-- Dynamic content -->
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="nav-bar" id="navBar">
+    <div class="nav-item active" data-page="dashboard" title="Dashboard - Overview"><i class="fas fa-chart-pie"></i> Dashboard</div>
+    <div class="nav-item" data-page="clients" title="Clients - Manage subscribers"><i class="fas fa-users"></i> Clients</div>
+    <div class="nav-item" data-page="payments" title="Payments - Record payments"><i class="fas fa-credit-card"></i> Payments</div>
+    <div class="nav-item" data-page="tickets" title="Tickets - Support tickets"><i class="fas fa-ticket-alt"></i> Tickets</div>
+    <div class="nav-item admin-only hidden" data-page="settings" title="Settings - Manage plans, agents"><i class="fas fa-cog"></i> Settings</div>
+    <div class="nav-item admin-only hidden" data-page="users" title="Users - Manage system users"><i class="fas fa-user-cog"></i> Users</div>
+    <div class="nav-item admin-only hidden" data-page="audit" title="Audit Log - Activity history"><i class="fas fa-history"></i> Audit</div>
+  </div>
+</div>
+
+<!-- ========== MODAL CONTAINER ========== -->
+<div id="modalContainer"></div>
+
+<script>
+  // ============================================================
+  // API CONFIGURATION - PALITAN ITO NG BAGONG URL
+  // ============================================================
+  const API_URL = 'https://script.google.com/macros/s/AKfycbygAnTAc7XSJZXCWHQgpWrMabVgNThBh9MDk_jtvqO26Rwqiwx0EePbGyznCuFH9ee2/exec';
+
+  // ============================================================
+  // APP VERSION
+  // ============================================================
+  const APP_VERSION = '3.5.0';
+
+  // ============================================================
+  // DATA LAYER
+  // ============================================================
+  const DB_KEY = 'shirotech_data';
+
+  function getDefaultData() {
+    return {
+      clients: [],
+      payments: [],
+      tickets: [],
+      users: [], // Will be loaded from server
+      auditLog: [],
+      config: {
+        plans: [
+          { name: 'Fiber 50', price: 500 },
+          { name: 'Fiber 100', price: 1000 },
+          { name: 'Fiber 200', price: 1500 },
+          { name: 'Fiber 300', price: 2000 }
+        ],
+        agents: ['Agent A', 'Agent B', 'Agent C', 'Agent D']
+      },
+      nextClientId: 1,
+      nextTicketId: 1,
+      nextUserId: 2
+    };
   }
-}
 
-function getSheet(name) {
-  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
-}
+  function loadLocalData() {
+    try {
+      const raw = localStorage.getItem(DB_KEY);
+      if (!raw) return getDefaultData();
+      const data = JSON.parse(raw);
+      if (!data.clients) data.clients = [];
+      if (!data.payments) data.payments = [];
+      if (!data.tickets) data.tickets = [];
+      if (!data.users) data.users = [];
+      if (!data.auditLog) data.auditLog = [];
+      if (!data.config) data.config = getDefaultData().config;
+      if (!data.config.plans) data.config.plans = getDefaultData().config.plans;
+      if (!data.config.agents) data.config.agents = getDefaultData().config.agents;
+      if (!data.nextClientId) data.nextClientId = 1;
+      if (!data.nextTicketId) data.nextTicketId = 1;
+      if (!data.nextUserId) data.nextUserId = 2;
+      return data;
+    } catch (e) {
+      return getDefaultData();
+    }
+  }
 
-// ----- GET CLIENTS -----
-function getClients() {
-  try {
-    var sheet = getSheet('CLIENTS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "CLIENTS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 2) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: true,
-        data: []
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    var headers = data[0];
-    var clients = [];
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      // Skip rows where Name is empty
-      if (!row[1] || row[1].toString().trim() === '') continue;
-      var client = {};
-      for (var j = 0; j < headers.length; j++) {
-        client[headers[j]] = row[j];
+  function saveLocalData(data) {
+    localStorage.setItem(DB_KEY, JSON.stringify(data));
+  }
+
+  // ============================================================
+  // HELPER: Compute Due Date (30 days after installation)
+  // ============================================================
+  function computeDueDate(installDateStr) {
+    if (!installDateStr) return '';
+    const date = new Date(installDateStr);
+    date.setDate(date.getDate() + 30);
+    return date.toISOString().split('T')[0];
+  }
+
+  function countPeriods(installDateStr, currentDate) {
+    if (!installDateStr) return 0;
+    const install = new Date(installDateStr);
+    const now = currentDate || new Date();
+    const diffTime = now - install;
+    if (diffTime < 0) return 0;
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30));
+  }
+
+  function getTotalDue(installDateStr, monthlyAmount, currentDate) {
+    const periods = countPeriods(installDateStr, currentDate);
+    return periods * monthlyAmount;
+  }
+
+  // ============================================================
+  // API CALLS
+  // ============================================================
+  let isSyncing = false;
+
+  function callAPI(action, data = null) {
+    return new Promise((resolve, reject) => {
+      const url = API_URL + '?action=' + action;
+      const params = new URLSearchParams();
+      if (data) {
+        params.append('data', JSON.stringify(data));
       }
-      clients.push(client);
-    }
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      data: clients
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+      const fullUrl = data ? url + '&' + params.toString() : url;
+      
+      fetch(fullUrl, { method: 'GET' })
+        .then(response => response.text())
+        .then(result => {
+          try {
+            const parsed = JSON.parse(result);
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+            } else {
+              resolve(parsed);
+            }
+          } catch (e) {
+            reject(new Error('Invalid response from server: ' + result));
+          }
+        })
+        .catch(error => reject(error));
+    });
   }
-}
 
-// ----- ADD CLIENT -----
-function addClient(data) {
-  try {
-    var sheet = getSheet('CLIENTS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "CLIENTS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
+  // ============================================================
+  // SYNC FUNCTIONS
+  // ============================================================
+  async function syncUsers() {
+    try {
+      const result = await callAPI('getUsers');
+      if (result.success && result.data) {
+        const localData = loadLocalData();
+        localData.users = result.data;
+        saveLocalData(localData);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Sync users error:', error);
+      return false;
     }
-    
-    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    if (headers.indexOf('DueDate') === -1 && headers.indexOf('Due Date') === -1) {
-      sheet.insertColumnAfter(7);
-      sheet.getRange(1, 8).setValue('DueDate');
-    }
-    
-    var colCount = sheet.getLastColumn();
-    var row = [];
-    for (var i = 0; i < colCount; i++) {
-      row.push('');
-    }
-    
-    row[0] = data.id || (sheet.getLastRow());
-    row[1] = data.name || '';
-    row[2] = data.contact || '';
-    row[3] = data.address || '';
-    row[4] = data.plan || '';
-    row[5] = data.amount || 0;
-    row[6] = data.installDate || '';
-    row[7] = data.dueDate || '';
-    row[8] = data.accountName || '';
-    row[9] = data.napbox || '';
-    row[10] = data.agent || '';
-    row[11] = data.status || 'Active';
-    row[12] = data.statusLog ? JSON.stringify(data.statusLog) : '';
-    
-    sheet.appendRow(row);
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      message: 'Client added successfully'
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
   }
-}
 
-// ----- UPDATE CLIENT -----
-function updateClient(data) {
-  try {
-    var sheet = getSheet('CLIENTS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "CLIENTS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
+  async function syncWithServer() {
+    if (isSyncing) return;
+    isSyncing = true;
+    const statusEl = document.getElementById('syncStatus');
+    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    statusEl.className = 'sync-status';
+
+    try {
+      // Sync users first
+      await syncUsers();
+
+      const result = await callAPI('getClients');
+      if (result.success && result.data) {
+        const localData = loadLocalData();
+        localData.clients = result.data;
+        saveLocalData(localData);
+      }
+
+      const payResult = await callAPI('getPayments');
+      if (payResult.success && payResult.data) {
+        const localData = loadLocalData();
+        localData.payments = payResult.data;
+        saveLocalData(localData);
+      }
+
+      const ticketResult = await callAPI('getTickets');
+      if (ticketResult.success && ticketResult.data) {
+        const localData = loadLocalData();
+        localData.tickets = ticketResult.data;
+        saveLocalData(localData);
+      }
+
+      statusEl.innerHTML = '<i class="fas fa-cloud"></i> Synced';
+      statusEl.className = 'sync-status';
+      
+      if (currentUser) {
+        renderPage(currentPage);
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Offline';
+      statusEl.className = 'sync-status error';
     }
-    var rows = sheet.getDataRange().getValues();
-    var headers = rows[0];
-    var colCount = headers.length;
+    isSyncing = false;
+  }
+
+  // ============================================================
+  // GLOBAL STATE
+  // ============================================================
+  let currentUser = null;
+  let currentPage = 'dashboard';
+  let chartInstance = null;
+  let syncInterval = null;
+  let currentFilter = '';
+
+  // ============================================================
+  // AUTO-UPDATE CHECK
+  // ============================================================
+  function checkForUpdates() {
+    const currentVersion = APP_VERSION;
+    const storedVersion = localStorage.getItem('app_version');
+
+    if (!storedVersion) {
+      localStorage.setItem('app_version', currentVersion);
+      return;
+    }
+
+    if (storedVersion !== currentVersion) {
+      if (sessionStorage.getItem('update_notified') === 'true') return;
+      sessionStorage.setItem('update_notified', 'true');
+      showUpdateNotification();
+    }
+  }
+
+  function showUpdateNotification() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'updateModal';
+    modal.style.zIndex = '2000';
+    modal.innerHTML = `
+      <div class="modal-box" style="text-align:center; max-width:400px;">
+        <h3 style="color:#27ae60;"><i class="fas fa-sync-alt"></i> New Update Available!</h3>
+        <p style="margin:16px 0; color:#555;">The app has been updated with new features.</p>
+        <p style="font-size:13px; color:#999;">Version ${APP_VERSION}</p>
+        <button class="btn btn-success btn-block" onclick="refreshApp()" style="font-size:18px; padding:14px;">
+          <i class="fas fa-sync"></i> Refresh Now
+        </button>
+        <button class="btn btn-outline btn-block" onclick="document.getElementById('updateModal').remove()" style="margin-top:8px;">
+          Later
+        </button>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  function refreshApp() {
+    localStorage.setItem('app_version', APP_VERSION);
+    window.location.reload(true);
+  }
+
+  // ============================================================
+  // REAL-TIME CLOCK
+  // ============================================================
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clockDisplay').textContent = now.toLocaleString('en-US', {
+      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ============================================================
+  // LOGIN / LOGOUT
+  // ============================================================
+  async function login(e) {
+    e.preventDefault();
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
     
-    for (var i = 1; i < rows.length; i++) {
-      if (rows[i][0] == data.id) {
-        var row = [];
-        for (var j = 0; j < colCount; j++) {
-          row.push('');
+    // First, sync users from server
+    await syncUsers();
+    
+    const data = loadLocalData();
+    const user = data.users.find(u => u.Username === username && u.Password === password);
+    if (!user) {
+      document.getElementById('loginError').textContent = 'Invalid username or password.';
+      return;
+    }
+    currentUser = { username: user.Username, role: user.Role };
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('appScreen').classList.remove('hidden');
+    document.getElementById('currentUserDisplay').textContent = user.Username + ' (' + user.Role + ')';
+    const isAdmin = user.Role === 'admin';
+    document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
+    
+    if (syncInterval) clearInterval(syncInterval);
+    syncInterval = setInterval(syncWithServer, 30000);
+    
+    checkForUpdates();
+    await syncWithServer();
+    navigateTo('dashboard');
+  }
+
+  function logout() {
+    if (syncInterval) clearInterval(syncInterval);
+    currentUser = null;
+    document.getElementById('appScreen').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('loginForm').reset();
+  }
+
+  // ============================================================
+  // PASSWORD RESET, CHANGE PASSWORD, ETC.
+  // ============================================================
+  let resetCodes = {};
+
+  function showResetPassword() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Reset Password</h3>
+        <p style="color:#7f8c8d; font-size:14px;">Enter username and registered email.</p>
+        <form id="resetRequestForm" onsubmit="requestReset(event)">
+          <div class="form-group"><label>Username</label><input type="text" id="resetUsername" required></div>
+          <div class="form-group"><label>Email</label><input type="email" id="resetEmail" required></div>
+          <button type="submit" class="btn btn-success btn-block">Request Reset Code</button>
+          <div id="resetStatus" style="margin-top:8px;"></div>
+        </form>
+        <hr>
+        <p style="font-size:14px;">Enter reset code and new password:</p>
+        <form id="resetCodeForm" onsubmit="applyReset(event)">
+          <div class="form-group"><label>Reset Code</label><input type="text" id="resetCode" required></div>
+          <div class="form-group"><label>New Password</label><input type="password" id="newPassword" required></div>
+          <button type="submit" class="btn btn-warning btn-block">Change Password</button>
+          <div id="resetApplyStatus" style="margin-top:8px;"></div>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  async function requestReset(e) {
+    e.preventDefault();
+    const username = document.getElementById('resetUsername').value.trim();
+    const email = document.getElementById('resetEmail').value.trim();
+    
+    await syncUsers();
+    const data = loadLocalData();
+    const user = data.users.find(u => u.Username === username && u.Email === email);
+    if (!user) {
+      document.getElementById('resetStatus').innerHTML = '<span style="color:#e74c3c;">User not found or email mismatch.</span>';
+      return;
+    }
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    resetCodes[username] = code;
+    document.getElementById('resetStatus').innerHTML = `
+      <span style="color:#27ae60;">✅ Reset code generated: <strong>${code}</strong><br>
+      (In production this would be emailed to you.)</span>
+    `;
+  }
+
+  async function applyReset(e) {
+    e.preventDefault();
+    const code = document.getElementById('resetCode').value.trim();
+    const newPass = document.getElementById('newPassword').value.trim();
+    if (!newPass || newPass.length < 4) {
+      document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#e74c3c;">Password must be at least 4 characters.</span>';
+      return;
+    }
+    let foundUser = null;
+    for (const [user, c] of Object.entries(resetCodes)) {
+      if (c === code) { foundUser = user; break; }
+    }
+    if (!foundUser) {
+      document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#e74c3c;">Invalid reset code.</span>';
+      return;
+    }
+    try {
+      const result = await callAPI('updateUser', {
+        username: foundUser,
+        password: newPass,
+        email: '',
+        role: 'user'
+      });
+      if (result.success) {
+        await syncUsers();
+        addAuditLog('Password Reset', foundUser, 'Password changed via reset.');
+        delete resetCodes[foundUser];
+        document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#27ae60;">✅ Password updated! You can now login.</span>';
+        setTimeout(() => {
+          const modal = document.querySelector('.modal-overlay');
+          if (modal) modal.remove();
+        }, 2000);
+      } else {
+        document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#e74c3c;">❌ ' + (result.error || 'Error updating password') + '</span>';
+      }
+    } catch(error) {
+      document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#e74c3c;">❌ ' + error.message + '</span>';
+    }
+  }
+
+  async function showChangePassword() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3><i class="fas fa-key"></i> Change Password</h3>
+        <form id="changePasswordForm" onsubmit="changePassword(event)">
+          <div class="form-group"><label>Current Password</label><input type="password" id="oldPassword" required></div>
+          <div class="form-group"><label>New Password</label><input type="password" id="newPasswordChange" required minlength="4"></div>
+          <div class="form-group"><label>Confirm New Password</label><input type="password" id="confirmPasswordChange" required></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Update Password</button>
+          <div id="changePassStatus" style="margin-top:8px;"></div>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  async function changePassword(e) {
+    e.preventDefault();
+    const oldPass = document.getElementById('oldPassword').value.trim();
+    const newPass = document.getElementById('newPasswordChange').value.trim();
+    const confirmPass = document.getElementById('confirmPasswordChange').value.trim();
+
+    if (!oldPass || !newPass || !confirmPass) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">All fields are required.</span>';
+      return;
+    }
+    if (newPass.length < 4) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">New password must be at least 4 characters.</span>';
+      return;
+    }
+    if (newPass !== confirmPass) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">Passwords do not match.</span>';
+      return;
+    }
+
+    await syncUsers();
+    const data = loadLocalData();
+    const user = data.users.find(u => u.Username === currentUser.username);
+    if (!user) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">User not found.</span>';
+      return;
+    }
+    if (user.Password !== oldPass) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">Current password is incorrect.</span>';
+      return;
+    }
+
+    try {
+      const result = await callAPI('updateUser', {
+        username: currentUser.username,
+        password: newPass,
+        email: user.Email || '',
+        role: user.Role || 'user'
+      });
+      if (result.success) {
+        await syncUsers();
+        addAuditLog('Password Changed', currentUser.username, 'Password changed by user.');
+        document.getElementById('changePassStatus').innerHTML = '<span style="color:#27ae60;">✅ Password updated successfully!</span>';
+        setTimeout(() => {
+          const modal = document.querySelector('.modal-overlay');
+          if (modal) modal.remove();
+        }, 1500);
+      } else {
+        document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">❌ ' + (result.error || 'Error updating password') + '</span>';
+      }
+    } catch(error) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">❌ ' + error.message + '</span>';
+    }
+  }
+
+  async function showResetUserPassword(username) {
+    if (currentUser.role !== 'admin') {
+      alert('Admin only.');
+      return;
+    }
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3><i class="fas fa-key"></i> Reset Password for ${username}</h3>
+        <form id="resetUserPassForm" onsubmit="resetUserPassword(event, '${username}')">
+          <div class="form-group"><label>New Password</label><input type="password" id="resetNewPass" required minlength="4"></div>
+          <div class="form-group"><label>Confirm Password</label><input type="password" id="resetConfirmPass" required></div>
+          <button type="submit" class="btn btn-warning btn-block"><i class="fas fa-save"></i> Reset Password</button>
+          <div id="resetUserStatus" style="margin-top:8px;"></div>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  async function resetUserPassword(e, username) {
+    e.preventDefault();
+    const newPass = document.getElementById('resetNewPass').value.trim();
+    const confirmPass = document.getElementById('resetConfirmPass').value.trim();
+
+    if (!newPass || !confirmPass) {
+      document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">All fields are required.</span>';
+      return;
+    }
+    if (newPass.length < 4) {
+      document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">Password must be at least 4 characters.</span>';
+      return;
+    }
+    if (newPass !== confirmPass) {
+      document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">Passwords do not match.</span>';
+      return;
+    }
+
+    try {
+      const result = await callAPI('updateUser', {
+        username: username,
+        password: newPass,
+        email: '',
+        role: 'user'
+      });
+      if (result.success) {
+        await syncUsers();
+        addAuditLog('Password Reset (Admin)', currentUser.username, 'Admin reset password for ' + username);
+        document.getElementById('resetUserStatus').innerHTML = '<span style="color:#27ae60;">✅ Password reset successfully!</span>';
+        setTimeout(() => {
+          const modal = document.querySelector('.modal-overlay');
+          if (modal) modal.remove();
+          navigateTo('users');
+        }, 1500);
+      } else {
+        document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">❌ ' + (result.error || 'Error resetting password') + '</span>';
+      }
+    } catch(error) {
+      document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">❌ ' + error.message + '</span>';
+    }
+  }
+
+  function closeModal(element) {
+    const modal = element.closest('.modal-overlay');
+    if (modal) modal.remove();
+  }
+
+  function addAuditLog(action, username, details) {
+    const data = loadLocalData();
+    data.auditLog.push({
+      timestamp: new Date().toISOString(),
+      username: username || (currentUser ? currentUser.username : 'system'),
+      action: action,
+      details: details || ''
+    });
+    saveLocalData(data);
+  }
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+  function getClientsWithBalance(data) {
+    const now = new Date();
+    return data.clients.map(client => {
+      const totalPaid = data.payments
+        .filter(p => p.ClientID == client.ID)
+        .reduce((sum, p) => sum + Number(p.Amount), 0);
+      const totalDue = getTotalDue(client.InstallDate, Number(client.Amount), now);
+      const balance = Math.max(0, totalDue - totalPaid);
+      return { ...client, balance, totalPaid, totalDue };
+    });
+  }
+
+  function getClientHistory(clientId) {
+    const data = loadLocalData();
+    const payments = data.payments.filter(p => p.ClientID == clientId);
+    const client = data.clients.find(c => c.ID == clientId);
+    const history = [];
+    payments.forEach(p => {
+      history.push({ date: p.Date, type: 'Payment', amount: p.Amount, details: p.Period || '' });
+    });
+    if (client && client.StatusLog) {
+      try {
+        const logs = JSON.parse(client.StatusLog);
+        logs.forEach(log => {
+          history.push({ date: log.date, type: log.action, details: log.note || '' });
+        });
+      } catch(e) {}
+    }
+    const tickets = data.tickets.filter(t => t.ClientID == clientId);
+    tickets.forEach(t => {
+      history.push({ date: t.CreatedAt, type: 'Ticket', details: t.Subject + ' - ' + t.Status });
+    });
+    history.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return history;
+  }
+
+  // ============================================================
+  // NAVIGATION & RENDER (same as before)
+  // ============================================================
+  function navigateTo(page) {
+    if (!currentUser) return;
+    currentPage = page;
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.page === page);
+    });
+    renderPage(page);
+  }
+
+  function renderPage(page) {
+    const container = document.getElementById('appContainer');
+    const data = loadLocalData();
+    const clientsWithBalance = getClientsWithBalance(data);
+
+    switch(page) {
+      case 'dashboard': renderDashboard(container, data, clientsWithBalance); break;
+      case 'clients': renderClients(container, data, clientsWithBalance); break;
+      case 'payments': renderPayments(container, data, clientsWithBalance); break;
+      case 'tickets': renderTickets(container, data, clientsWithBalance); break;
+      case 'settings': renderSettings(container, data); break;
+      case 'users': renderUsers(container, data); break;
+      case 'audit': renderAudit(container, data); break;
+      default: container.innerHTML = '<p>Page not found</p>';
+    }
+  }
+
+  // ----- DASHBOARD -----
+  function renderDashboard(container, data, clientsWithBalance) {
+    const totalClients = data.clients.length;
+    const activeClients = data.clients.filter(c => c.Status === 'Active').length;
+    const totalCollectible = data.clients.filter(c => c.Status === 'Active').reduce((sum, c) => sum + Number(c.Amount), 0);
+    const totalCollected = data.payments.reduce((sum, p) => sum + Number(p.Amount), 0);
+    const totalBalance = clientsWithBalance.filter(c => c.Status === 'Active').reduce((sum, c) => sum + c.balance, 0);
+    const paidCount = clientsWithBalance.filter(c => c.Status === 'Active' && c.balance === 0).length;
+    const unpaidCount = clientsWithBalance.filter(c => c.Status === 'Active' && c.balance > 0).length;
+    const percentage = totalCollectible > 0 ? ((totalCollected / totalCollectible) * 100) : 0;
+
+    const dueAccounts = clientsWithBalance.filter(c => c.Status === 'Active' && c.balance > 0);
+    const openTickets = data.tickets.filter(t => t.Status !== 'Closed' && t.Status !== 'Resolved');
+    const recentTickets = [...data.tickets].sort((a,b) => new Date(b.CreatedAt) - new Date(a.CreatedAt)).slice(0,5);
+
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-chart-pie"></i> Dashboard</h2>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="number">${totalClients}</div><div class="label">Total Clients</div></div>
+          <div class="stat-card"><div class="number">${activeClients}</div><div class="label">Active</div></div>
+          <div class="stat-card"><div class="number">₱${totalCollectible.toFixed(2)}</div><div class="label">Collectible</div></div>
+          <div class="stat-card"><div class="number">₱${totalCollected.toFixed(2)}</div><div class="label">Collected</div></div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="number">${percentage.toFixed(1)}%</div><div class="label">Collection Rate</div></div>
+          <div class="stat-card"><div class="number">${paidCount}</div><div class="label">Fully Paid</div></div>
+          <div class="stat-card"><div class="number">${unpaidCount}</div><div class="label">With Balance</div></div>
+          <div class="stat-card"><div class="number">${openTickets.length}</div><div class="label">Open Tickets</div></div>
+        </div>
+        <div class="chart-container"><canvas id="dashboardChart"></canvas></div>
+        <h3 style="margin-top:16px;">📌 Due Accounts (with balance)</h3>
+        ${dueAccounts.length === 0 ? '<p>No due accounts.</p>' : `
+          <div class="table-responsive">
+            <table>
+              <thead><tr><th>Acct #</th><th>Name</th><th>Balance</th></tr></thead>
+              <tbody>
+                ${dueAccounts.map(c => `<tr><td>${c.ID}</td><td>${c.Name}</td><td class="badge badge-danger">₱${c.balance.toFixed(2)}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+        <h3 style="margin-top:16px;">🛠️ Recent Tickets</h3>
+        ${recentTickets.length === 0 ? '<p>No tickets.</p>' : `
+          <div class="table-responsive">
+            <table>
+              <thead><tr><th>ID</th><th>Client</th><th>Subject</th><th>Status</th></tr></thead>
+              <tbody>
+                ${recentTickets.map(t => {
+                  const client = data.clients.find(c => c.ID == t.ClientID);
+                  const statusClass = t.Status === 'Open' ? 'badge-danger' : t.Status === 'In Progress' ? 'badge-warning' : t.Status === 'Resolved' ? 'badge-info' : 'badge-success';
+                  return `<tr><td>#${t.ID}</td><td>${client ? client.Name : 'Unknown'}</td><td>${t.Subject}</td><td><span class="badge ${statusClass}">${t.Status}</span></td></tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+        <div class="flex mt-16">
+          <button class="btn btn-success" onclick="navigateTo('payments')"><i class="fas fa-plus"></i> Record Payment</button>
+          <button class="btn btn-info" onclick="navigateTo('tickets')"><i class="fas fa-ticket-alt"></i> View Tickets</button>
+          <button class="btn" onclick="navigateTo('clients')"><i class="fas fa-user-plus"></i> Add Client</button>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+
+    setTimeout(() => {
+      const ctx = document.getElementById('dashboardChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Paid (No Balance)', 'With Balance'],
+          datasets: [{
+            data: [paidCount, unpaidCount],
+            backgroundColor: ['#27ae60', '#e74c3c'],
+            borderWidth: 0
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+    }, 100);
+  }
+
+  // ----- CLIENTS (with filters and tooltips) -----
+  function renderClients(container, data, clientsWithBalance) {
+    let html = `
+      <div class="card">
+        <div class="flex-between">
+          <h2><i class="fas fa-users"></i> Clients</h2>
+          <button class="btn btn-success" onclick="showAddClientForm()"><i class="fas fa-plus"></i> Add</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="🔍 Search by ID, Name, Address, or Contact #..." oninput="filterClients()">
+          <button class="btn btn-outline" onclick="document.getElementById('searchInput').value=''; currentFilter=''; filterClients();">Clear</button>
+          <span class="search-hint">${currentFilter ? 'Filter: ' + currentFilter : ''}</span>
+        </div>
+        <div id="clientFormContainer"></div>
+        <div id="clientTableContainer">${buildClientTable(data, clientsWithBalance, '')}</div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  function buildClientTable(data, clientsWithBalance, filterText) {
+    let filtered = data.clients.filter(c => c.Name && c.Name.toString().trim() !== '');
+    if (filterText) {
+      const f = filterText.toLowerCase();
+      filtered = filtered.filter(c =>
+        c.ID.toString().includes(f) ||
+        (c.Name && c.Name.toLowerCase().includes(f)) ||
+        (c.Address && c.Address.toLowerCase().includes(f)) ||
+        (c.Contact && c.Contact.toLowerCase().includes(f))
+      );
+    }
+    let rows = '';
+    if (filtered.length === 0) {
+      rows = `<tr><td colspan="10" class="text-center">No clients found.</td></tr>`;
+    } else {
+      filtered.forEach(client => {
+        const balance = clientsWithBalance.find(c => c.ID == client.ID)?.balance || 0;
+        const statusBadge = client.Status === 'Active' ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>';
+        rows += `
+          <tr>
+            <td>${client.ID}</td>
+            <td>${client.Name || ''}</td>
+            <td class="clickable-address" onclick="filterByAddress('${(client.Address || '').replace(/'/g, "\\'")}')" title="Click to filter by this address">${client.Address || ''}</td>
+            <td>${client.Contact || ''}</td>
+            <td>${client.Plan || ''}</td>
+            <td>₱${Number(client.Amount).toFixed(2)}</td>
+            <td>${client.InstallDate || ''}</td>
+            <td>${client.DueDate || ''}</td>
+            <td>${statusBadge}</td>
+            <td>
+              <button class="btn btn-warning btn-sm" onclick="editClient(${client.ID})" title="Edit client details"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-info btn-sm" onclick="viewHistory(${client.ID})" title="View client history"><i class="fas fa-history"></i></button>
+              <button class="btn btn-primary btn-sm" onclick="showCreateTicket(${client.ID})" title="Create repair ticket"><i class="fas fa-ticket-alt"></i></button>
+              ${client.Status === 'Active' ? 
+                `<button class="btn btn-danger btn-sm" onclick="disconnectClient(${client.ID})" title="Disconnect client"><i class="fas fa-power-off"></i></button>` :
+                `<button class="btn btn-success btn-sm" onclick="reconnectClient(${client.ID})" title="Reconnect client"><i class="fas fa-plug"></i></button>`}
+              <button class="btn btn-danger btn-sm" onclick="deleteClient(${client.ID})" title="Delete client"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+    return `
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Acct #</th><th>Name</th><th>Address <span style="font-size:11px; color:#999;">(click to filter)</span></th><th>Contact</th><th>Plan</th><th>Monthly</th><th>Install Date</th><th>Due Date</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function filterByAddress(address) {
+    if (!address || address === '') return;
+    currentFilter = address;
+    const input = document.getElementById('searchInput');
+    if (input) input.value = address;
+    filterClients();
+  }
+
+  function filterClients() {
+    const input = document.getElementById('searchInput');
+    const filterText = input ? input.value.trim() : currentFilter;
+    const data = loadLocalData();
+    const clientsWithBalance = getClientsWithBalance(data);
+    const tableContainer = document.getElementById('clientTableContainer');
+    if (tableContainer) {
+      tableContainer.innerHTML = buildClientTable(data, clientsWithBalance, filterText);
+    }
+  }
+
+  // ----- CLIENT ADD/EDIT -----
+  function showAddClientForm() {
+    const data = loadLocalData();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Add New Client</h3>
+        <form id="addClientForm" onsubmit="addClient(event)">
+          <div class="form-group"><label>Name *</label><input type="text" id="cName" required></div>
+          <div class="form-group"><label>Contact #</label><input type="text" id="cContact"></div>
+          <div class="form-group"><label>Address</label><input type="text" id="cAddress"></div>
+          <div class="form-group"><label>Plan</label><select id="cPlan" onchange="autoFillPrice('cPlan','cAmount')"></select></div>
+          <div class="form-group"><label>Monthly Amount *</label><input type="number" id="cAmount" step="0.01" required></div>
+          <div class="form-group"><label>Installation Date</label><input type="date" id="cInstallDate" required></div>
+          <div class="form-group"><label>Account Name</label><input type="text" id="cAccount"></div>
+          <div class="form-group"><label>Napbox</label><input type="text" id="cNapbox"></div>
+          <div class="form-group"><label>Agent</label><select id="cAgent"></select></div>
+          <div class="form-group"><label>Due Date (auto: +30 days)</label><input type="text" id="cDueDatePreview" readonly style="background:#f0f0f0; color:#555;"></div>
+          <div class="form-group"><label>Status</label><select id="cStatus"><option value="Active" selected>Active</option><option value="Inactive">Inactive</option></select></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Save</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+    populatePlanSelect('cPlan', data);
+    populateAgentSelect('cAgent', data);
+    const installDateInput = document.getElementById('cInstallDate');
+    installDateInput.value = new Date().toISOString().split('T')[0];
+    installDateInput.addEventListener('change', function() {
+      if (this.value) document.getElementById('cDueDatePreview').value = computeDueDate(this.value);
+    });
+    setTimeout(() => {
+      if (installDateInput.value) document.getElementById('cDueDatePreview').value = computeDueDate(installDateInput.value);
+    }, 100);
+  }
+
+  function populatePlanSelect(id, data) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = data.config.plans.map(p => `<option value="${p.name}" data-price="${p.price}">${p.name} (₱${p.price})</option>`).join('');
+  }
+
+  function populateAgentSelect(id, data) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = data.config.agents.map(a => `<option value="${a}">${a}</option>`).join('');
+  }
+
+  function autoFillPrice(planId, amountId) {
+    const planSel = document.getElementById(planId);
+    const price = planSel.options[planSel.selectedIndex]?.dataset?.price;
+    if (price) document.getElementById(amountId).value = price;
+  }
+
+  async function addClient(e) {
+    e.preventDefault();
+    const data = loadLocalData();
+    const name = document.getElementById('cName').value.trim();
+    if (!name) return alert('Name is required.');
+    const amount = parseFloat(document.getElementById('cAmount').value);
+    if (isNaN(amount) || amount <= 0) return alert('Valid amount required.');
+    const installDate = document.getElementById('cInstallDate').value || new Date().toISOString().split('T')[0];
+    const dueDate = computeDueDate(installDate);
+    const status = document.getElementById('cStatus').value || 'Active';
+
+    const newClient = {
+      id: data.nextClientId++,
+      name, contact: document.getElementById('cContact').value.trim() || '',
+      address: document.getElementById('cAddress').value || '',
+      plan: document.getElementById('cPlan').value,
+      amount, installDate, dueDate,
+      accountName: document.getElementById('cAccount').value || '',
+      napbox: document.getElementById('cNapbox').value || '',
+      agent: document.getElementById('cAgent').value,
+      status, statusLog: []
+    };
+    try {
+      const result = await callAPI('addClient', newClient);
+      if (result.success) {
+        data.clients.push(newClient);
+        saveLocalData(data);
+        addAuditLog('Client Added', currentUser.username, 'Added client #' + newClient.id + ': ' + newClient.name);
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('clients');
+      } else {
+        alert('Error adding client: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  function editClient(id) {
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
+    if (!client) return;
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Edit Client #${client.ID}</h3>
+        <form id="editClientForm" onsubmit="updateClient(event, ${client.ID})">
+          <div class="form-group"><label>Name *</label><input type="text" id="eName" value="${client.Name || ''}" required></div>
+          <div class="form-group"><label>Contact #</label><input type="text" id="eContact" value="${client.Contact || ''}"></div>
+          <div class="form-group"><label>Address</label><input type="text" id="eAddress" value="${client.Address || ''}"></div>
+          <div class="form-group"><label>Plan</label><select id="ePlan" onchange="autoFillPrice('ePlan','eAmount')"></select></div>
+          <div class="form-group"><label>Monthly Amount</label><input type="number" id="eAmount" step="0.01" value="${client.Amount || 0}" required></div>
+          <div class="form-group"><label>Installation Date</label><input type="date" id="eInstallDate" value="${client.InstallDate || ''}"></div>
+          <div class="form-group"><label>Due Date (auto: +30 days)</label><input type="text" id="eDueDatePreview" readonly style="background:#f0f0f0; color:#555;" value="${client.DueDate || ''}"></div>
+          <div class="form-group"><label>Account Name</label><input type="text" id="eAccount" value="${client.AccountName || ''}"></div>
+          <div class="form-group"><label>Napbox</label><input type="text" id="eNapbox" value="${client.Napbox || ''}"></div>
+          <div class="form-group"><label>Agent</label><select id="eAgent"></select></div>
+          <div class="form-group"><label>Status</label><select id="eStatus"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Update</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+    const data2 = loadLocalData();
+    populatePlanSelect('ePlan', data2);
+    populateAgentSelect('eAgent', data2);
+    document.getElementById('ePlan').value = client.Plan || '';
+    document.getElementById('eAgent').value = client.Agent || '';
+    document.getElementById('eStatus').value = client.Status || 'Active';
+    document.getElementById('eInstallDate').addEventListener('change', function() {
+      if (this.value) document.getElementById('eDueDatePreview').value = computeDueDate(this.value);
+    });
+  }
+
+  async function updateClient(e, id) {
+    e.preventDefault();
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
+    if (!client) return;
+    const name = document.getElementById('eName').value.trim();
+    if (!name) return alert('Name required.');
+    const amount = parseFloat(document.getElementById('eAmount').value);
+    if (isNaN(amount) || amount <= 0) return alert('Valid amount required.');
+    const installDate = document.getElementById('eInstallDate').value || client.InstallDate;
+    const dueDate = computeDueDate(installDate);
+    const oldStatus = client.Status;
+    const newStatus = document.getElementById('eStatus').value;
+    
+    const updatedClient = {
+      id: client.ID, name,
+      contact: document.getElementById('eContact').value.trim() || '',
+      address: document.getElementById('eAddress').value || '',
+      plan: document.getElementById('ePlan').value,
+      amount, installDate, dueDate,
+      accountName: document.getElementById('eAccount').value || '',
+      napbox: document.getElementById('eNapbox').value || '',
+      agent: document.getElementById('eAgent').value,
+      status: newStatus,
+      statusLog: client.StatusLog || ''
+    };
+    try {
+      const result = await callAPI('updateClient', updatedClient);
+      if (result.success) {
+        Object.assign(client, updatedClient);
+        if (oldStatus !== newStatus) {
+          let logs = [];
+          try { logs = JSON.parse(client.StatusLog || '[]'); } catch(e) {}
+          logs.push({ date: new Date().toISOString().split('T')[0], action: newStatus === 'Active' ? 'Reconnected' : 'Disconnected', note: 'Status changed from ' + oldStatus + ' to ' + newStatus });
+          client.StatusLog = JSON.stringify(logs);
         }
-        row[0] = data.id;
-        row[1] = data.name || '';
-        row[2] = data.contact || '';
-        row[3] = data.address || '';
-        row[4] = data.plan || '';
-        row[5] = data.amount || 0;
-        row[6] = data.installDate || '';
-        row[7] = data.dueDate || '';
-        row[8] = data.accountName || '';
-        row[9] = data.napbox || '';
-        row[10] = data.agent || '';
-        row[11] = data.status || 'Active';
-        row[12] = data.statusLog ? JSON.stringify(data.statusLog) : '';
-        
-        sheet.getRange(i+1, 1, 1, colCount).setValues([row]);
-        return ContentService.createTextOutput(JSON.stringify({
-          success: true,
-          message: 'Client updated successfully'
-        })).setMimeType(ContentService.MimeType.JSON);
+        saveLocalData(data);
+        addAuditLog('Client Updated', currentUser.username, 'Client #' + id + ' updated.');
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('clients');
+      } else {
+        alert('Error updating client: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  async function deleteClient(id) {
+    if (!confirm('Permanently delete this client?')) return;
+    try {
+      const result = await callAPI('deleteClient', { id: id });
+      if (result.success) {
+        const data = loadLocalData();
+        data.clients = data.clients.filter(c => c.ID != id);
+        saveLocalData(data);
+        addAuditLog('Client Deleted', currentUser.username, 'Deleted client #' + id);
+        await syncWithServer();
+        navigateTo('clients');
+      } else {
+        alert('Error deleting client: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  function disconnectClient(id) {
+    if (!confirm('Disconnect this client?')) return;
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
+    if (!client || client.Status !== 'Active') return alert('Client is not active.');
+    client.Status = 'Inactive';
+    let logs = [];
+    try { logs = JSON.parse(client.StatusLog || '[]'); } catch(e) {}
+    logs.push({ date: new Date().toISOString().split('T')[0], action: 'Disconnected', note: 'Manually disconnected' });
+    client.StatusLog = JSON.stringify(logs);
+    saveLocalData(data);
+    addAuditLog('Client Disconnected', currentUser.username, 'Client #' + id + ' disconnected.');
+    callAPI('updateClient', {
+      id: client.ID, name: client.Name, contact: client.Contact || '',
+      address: client.Address || '', plan: client.Plan || '', amount: client.Amount || 0,
+      installDate: client.InstallDate || '', dueDate: client.DueDate || '',
+      accountName: client.AccountName || '', napbox: client.Napbox || '',
+      agent: client.Agent || '', status: client.Status,
+      statusLog: client.StatusLog || ''
+    }).then(() => syncWithServer());
+    navigateTo('clients');
+  }
+
+  function reconnectClient(id) {
+    if (!confirm('Reconnect this client?')) return;
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
+    if (!client || client.Status !== 'Inactive') return alert('Client is not inactive.');
+    client.Status = 'Active';
+    let logs = [];
+    try { logs = JSON.parse(client.StatusLog || '[]'); } catch(e) {}
+    logs.push({ date: new Date().toISOString().split('T')[0], action: 'Reconnected', note: 'Manually reconnected' });
+    client.StatusLog = JSON.stringify(logs);
+    saveLocalData(data);
+    addAuditLog('Client Reconnected', currentUser.username, 'Client #' + id + ' reconnected.');
+    callAPI('updateClient', {
+      id: client.ID, name: client.Name, contact: client.Contact || '',
+      address: client.Address || '', plan: client.Plan || '', amount: client.Amount || 0,
+      installDate: client.InstallDate || '', dueDate: client.DueDate || '',
+      accountName: client.AccountName || '', napbox: client.Napbox || '',
+      agent: client.Agent || '', status: client.Status,
+      statusLog: client.StatusLog || ''
+    }).then(() => syncWithServer());
+    navigateTo('clients');
+  }
+
+  function viewHistory(id) {
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
+    if (!client) return;
+    const history = getClientHistory(id);
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box" style="max-width:700px;">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>History for #${client.ID} - ${client.Name}</h3>
+        <div class="table-responsive">
+          <table><thead><tr><th>Date</th><th>Type</th><th>Details</th></tr></thead>
+          <tbody>${history.length === 0 ? '<tr><td colspan="3" class="text-center">No history.</td></tr>' :
+            history.map(h => `<tr><td>${h.date}</td><td>${h.type}</td><td>${h.type === 'Payment' ? '₱' + Number(h.amount).toFixed(2) : h.details}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  // ----- TICKETS (unchanged) -----
+  function showCreateTicket(clientId) {
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == clientId);
+    if (!client) return;
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Create Ticket for ${client.Name} (Acct #${client.ID})</h3>
+        <form id="ticketForm" onsubmit="createTicket(event, ${clientId})">
+          <div class="form-group"><label>Subject *</label><input type="text" id="tSubject" required placeholder="e.g., Internet down"></div>
+          <div class="form-group"><label>Description</label><textarea id="tDescription" rows="3"></textarea></div>
+          <div class="form-group"><label>Priority</label><select id="tPriority"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option><option value="Critical">Critical</option></select></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Create Ticket</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  async function createTicket(e, clientId) {
+    e.preventDefault();
+    const data = loadLocalData();
+    const subject = document.getElementById('tSubject').value.trim();
+    if (!subject) return alert('Subject required.');
+    const description = document.getElementById('tDescription').value.trim();
+    const priority = document.getElementById('tPriority').value;
+    const newTicket = {
+      id: data.nextTicketId++,
+      clientId, subject, description, priority,
+      status: 'Open',
+      createdAt: new Date().toISOString().split('T')[0],
+      updates: []
+    };
+    try {
+      const result = await callAPI('addTicket', newTicket);
+      if (result.success) {
+        data.tickets.push(newTicket);
+        saveLocalData(data);
+        addAuditLog('Ticket Created', currentUser.username, 'Ticket #' + newTicket.id + ' for client #' + clientId + ': ' + subject);
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('tickets');
+      } else {
+        alert('Error creating ticket: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  function renderTickets(container, data, clientsWithBalance) {
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-ticket-alt"></i> Tickets</h2>
+        <div class="flex"><button class="btn btn-success" onclick="showCreateTicketAny()"><i class="fas fa-plus"></i> New Ticket</button></div>
+        <div class="table-responsive">
+          <table><thead><tr><th>ID</th><th>Client</th><th>Subject</th><th>Priority</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody>${data.tickets.length === 0 ? '<tr><td colspan="7" class="text-center">No tickets.</td></tr>' :
+            [...data.tickets].reverse().map(t => {
+              const client = data.clients.find(c => c.ID == t.ClientID);
+              const statusClass = t.Status === 'Open' ? 'badge-danger' : t.Status === 'In Progress' ? 'badge-warning' : t.Status === 'Resolved' ? 'badge-info' : 'badge-success';
+              const priorityClass = t.Priority === 'Critical' ? 'badge-danger' : t.Priority === 'High' ? 'badge-warning' : 'badge-info';
+              return `<tr><td>#${t.ID}</td><td>${client ? client.Name : 'Unknown'}</td><td>${t.Subject}</td><td><span class="badge ${priorityClass}">${t.Priority}</span></td><td><span class="badge ${statusClass}">${t.Status}</span></td><td>${t.CreatedAt}</td><td><button class="btn btn-info btn-sm" onclick="viewTicket(${t.ID})" title="View ticket details"><i class="fas fa-eye"></i></button><button class="btn btn-warning btn-sm" onclick="updateTicketStatus(${t.ID})" title="Update ticket status"><i class="fas fa-edit"></i></button></td></tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  function showCreateTicketAny() {
+    const data = loadLocalData();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Create Ticket</h3>
+        <form id="ticketFormAny" onsubmit="createTicketAny(event)">
+          <div class="form-group"><label>Client</label><select id="tClientAny" required><option value="">-- Select --</option>${data.clients.map(c => `<option value="${c.ID}">${c.ID} - ${c.Name}</option>`).join('')}</select></div>
+          <div class="form-group"><label>Subject *</label><input type="text" id="tSubjectAny" required></div>
+          <div class="form-group"><label>Description</label><textarea id="tDescAny" rows="3"></textarea></div>
+          <div class="form-group"><label>Priority</label><select id="tPriorityAny"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Create</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  async function createTicketAny(e) {
+    e.preventDefault();
+    const data = loadLocalData();
+    const clientId = parseInt(document.getElementById('tClientAny').value);
+    if (!clientId) return alert('Select client.');
+    const subject = document.getElementById('tSubjectAny').value.trim();
+    if (!subject) return alert('Subject required.');
+    const description = document.getElementById('tDescAny').value.trim();
+    const priority = document.getElementById('tPriorityAny').value;
+    const newTicket = {
+      id: data.nextTicketId++,
+      clientId, subject, description, priority,
+      status: 'Open',
+      createdAt: new Date().toISOString().split('T')[0],
+      updates: []
+    };
+    try {
+      const result = await callAPI('addTicket', newTicket);
+      if (result.success) {
+        data.tickets.push(newTicket);
+        saveLocalData(data);
+        addAuditLog('Ticket Created', currentUser.username, 'Ticket #' + newTicket.id + ' for client #' + clientId + ': ' + subject);
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('tickets');
+      } else {
+        alert('Error creating ticket: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  function viewTicket(id) {
+    const data = loadLocalData();
+    const ticket = data.tickets.find(t => t.ID == id);
+    if (!ticket) return;
+    const client = data.clients.find(c => c.ID == ticket.ClientID);
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    let updatesHtml = '';
+    try {
+      const updates = JSON.parse(ticket.Updates || '[]');
+      updatesHtml = updates.length > 0 ? updates.map(u => `<div class="update-log"><strong>${u.date}</strong> - ${u.status}: ${u.note}</div>`).join('') : '<p>No updates yet.</p>';
+    } catch(e) { updatesHtml = '<p>No updates yet.</p>'; }
+    modal.innerHTML = `
+      <div class="modal-box" style="max-width:700px;">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Ticket #${ticket.ID} - ${ticket.Subject}</h3>
+        <p><strong>Client:</strong> ${client ? client.Name : 'Unknown'}</p>
+        <p><strong>Priority:</strong> ${ticket.Priority}</p>
+        <p><strong>Status:</strong> ${ticket.Status}</p>
+        <p><strong>Created:</strong> ${ticket.CreatedAt}</p>
+        <p><strong>Description:</strong> ${ticket.Description || 'N/A'}</p>
+        <h4>Progress Updates</h4>${updatesHtml}<hr>
+        <form onsubmit="addTicketUpdate(event, ${id})">
+          <div class="form-group"><label>Add Update</label><select id="updateStatus"><option value="Open">Open</option><option value="In Progress">In Progress</option><option value="Resolved">Resolved</option><option value="Closed">Closed</option></select></div>
+          <div class="form-group"><label>Note</label><textarea id="updateNote" rows="2"></textarea></div>
+          <button type="submit" class="btn btn-primary btn-block">Add Update</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  async function addTicketUpdate(e, id) {
+    e.preventDefault();
+    const data = loadLocalData();
+    const ticket = data.tickets.find(t => t.ID == id);
+    if (!ticket) return;
+    const newStatus = document.getElementById('updateStatus').value;
+    const note = document.getElementById('updateNote').value.trim() || 'No details.';
+    let updates = [];
+    try { updates = JSON.parse(ticket.Updates || '[]'); } catch(e) {}
+    updates.push({ date: new Date().toISOString().split('T')[0], status: newStatus, note });
+    ticket.Updates = JSON.stringify(updates);
+    ticket.Status = newStatus;
+    try {
+      const result = await callAPI('updateTicket', {
+        id: ticket.ID, clientId: ticket.ClientID, subject: ticket.Subject,
+        description: ticket.Description || '', priority: ticket.Priority,
+        status: ticket.Status, createdAt: ticket.CreatedAt, updates: ticket.Updates
+      });
+      if (result.success) {
+        saveLocalData(data);
+        addAuditLog('Ticket Updated', currentUser.username, 'Ticket #' + id + ' status changed to ' + newStatus);
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('tickets');
+      } else {
+        alert('Error updating ticket: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  function updateTicketStatus(id) { viewTicket(id); }
+
+  // ----- PAYMENTS -----
+  function renderPayments(container, data, clientsWithBalance) {
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-credit-card"></i> Record Payment</h2>
+        <form id="paymentForm" onsubmit="recordPayment(event)">
+          <div class="form-group"><label>Client</label><select id="payClient" required onchange="updatePayAmount()"><option value="">-- Select --</option>${data.clients.filter(c => c.Status === 'Active').map(c => { const bal = clientsWithBalance.find(b => b.ID == c.ID)?.balance || 0; return `<option value="${c.ID}" data-balance="${bal}">${c.ID} - ${c.Name} (Balance: ₱${bal.toFixed(2)})</option>`; }).join('')}</select></div>
+          <div class="form-group"><label><input type="checkbox" id="payFull" onchange="togglePayFull()"> Pay Full Balance</label></div>
+          <div class="form-group"><label>Amount</label><input type="number" id="payAmount" step="0.01" required></div>
+          <div class="form-group"><label>Payment Date</label><input type="date" id="payDate" required></div>
+          <div class="form-group"><label>Period Covered</label><input type="text" id="payPeriod" placeholder="Month Year"></div>
+          <div class="form-group"><label>OR Number</label><input type="text" id="payOR"></div>
+          <div class="form-group"><label>Payment Method</label><select id="payMethod"><option>Cash</option><option>GCash</option><option>Bank Transfer</option></select></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Save Payment</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Payment History</h2>
+        <div class="table-responsive">
+          <table><thead><tr><th>Client</th><th>Amount</th><th>Date</th><th>Period</th><th>OR</th></tr></thead>
+          <tbody>${data.payments.length === 0 ? '<tr><td colspan="5" class="text-center">No payments.</td></tr>' :
+            [...data.payments].reverse().map(p => {
+              const client = data.clients.find(c => c.ID == p.ClientID);
+              return `<tr><td>${client ? client.Name : 'Unknown'}</td><td>₱${Number(p.Amount).toFixed(2)}</td><td>${p.Date}</td><td>${p.Period || ''}</td><td>${p.ORNumber || ''}</td></tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+    document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+  }
+
+  function togglePayFull() {
+    const checked = document.getElementById('payFull').checked;
+    const clientSelect = document.getElementById('payClient');
+    const amountInput = document.getElementById('payAmount');
+    if (checked && clientSelect.value) {
+      const bal = parseFloat(clientSelect.options[clientSelect.selectedIndex].dataset.balance) || 0;
+      amountInput.value = bal.toFixed(2);
+      amountInput.disabled = true;
+    } else {
+      amountInput.disabled = false;
+      amountInput.value = '';
+    }
+  }
+
+  function updatePayAmount() {
+    if (document.getElementById('payFull').checked) togglePayFull();
+  }
+
+  async function recordPayment(e) {
+    e.preventDefault();
+    const data = loadLocalData();
+    const clientId = parseInt(document.getElementById('payClient').value);
+    if (!clientId) return alert('Select a client.');
+    const amount = parseFloat(document.getElementById('payAmount').value);
+    if (isNaN(amount) || amount <= 0) return alert('Valid amount required.');
+    const date = document.getElementById('payDate').value;
+    if (!date) return alert('Payment date required.');
+    const period = document.getElementById('payPeriod').value.trim() || '';
+    const orNumber = document.getElementById('payOR').value.trim() || '';
+    const method = document.getElementById('payMethod').value;
+    const payment = { clientId, amount, date, period, orNumber, method };
+    try {
+      const result = await callAPI('addPayment', payment);
+      if (result.success) {
+        data.payments.push({ ClientID: clientId, Amount: amount, Date: date, Period: period, ORNumber: orNumber, Method: method });
+        saveLocalData(data);
+        addAuditLog('Payment Recorded', currentUser.username, 'Payment of ₱' + amount + ' for client #' + clientId);
+        document.getElementById('paymentForm').reset();
+        document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+        alert('Payment saved.');
+        await syncWithServer();
+        navigateTo('payments');
+      } else {
+        alert('Error recording payment: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  // ----- BALANCES -----
+  function renderBalances(container, data, clientsWithBalance) {
+    const totalBalance = clientsWithBalance.reduce((sum, c) => sum + c.balance, 0);
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-coins"></i> Outstanding Balances</h2>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="number">${clientsWithBalance.filter(c => c.balance > 0).length}</div><div class="label">With Balance</div></div>
+          <div class="stat-card"><div class="number">₱${totalBalance.toFixed(2)}</div><div class="label">Total Balance</div></div>
+        </div>
+        <div class="table-responsive">
+          <table><thead><tr><th>Acct #</th><th>Name</th><th>Plan</th><th>Monthly</th><th>Balance</th></tr></thead>
+          <tbody>${clientsWithBalance.length === 0 ? '<tr><td colspan="5" class="text-center">No active clients.</td></tr>' :
+            clientsWithBalance.map(c => {
+              const balClass = c.balance > 0 ? 'badge-danger' : 'badge-success';
+              return `<tr><td>${c.ID}</td><td>${c.Name}</td><td>${c.Plan}</td><td>₱${Number(c.Amount).toFixed(2)}</td><td><span class="badge ${balClass}">₱${c.balance.toFixed(2)}</span></td></tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  // ----- SETTINGS -----
+  function renderSettings(container, data) {
+    if (currentUser.role !== 'admin') {
+      container.innerHTML = '<div class="card"><p>Access denied. Admins only.</p></div>';
+      return;
+    }
+    const plans = data.config.plans || [];
+    const agents = data.config.agents || [];
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-cog"></i> Settings</h2>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div><h3>Plans (with Price)</h3>
+            <div id="planList">${plans.map((p, idx) => `<div class="flex-between" style="margin:4px 0; align-items:center;"><span>${p.name} - ₱${p.price}</span><button class="btn btn-danger btn-sm" onclick="removePlan(${idx})" title="Remove this plan"><i class="fas fa-times"></i></button></div>`).join('')}</div>
+            <div style="margin-top:8px;"><div class="flex"><input type="text" id="newPlanName" placeholder="Plan name" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;"><input type="number" id="newPlanPrice" placeholder="Price" style="width:100px; padding:8px; border:1px solid #ccc; border-radius:4px;"><button class="btn btn-success" onclick="addPlan()" title="Add new plan">Add</button></div></div>
+          </div>
+          <div><h3>Agents</h3>
+            <div id="agentList">${agents.map(a => `<div class="flex-between" style="margin:4px 0;"><span>${a}</span><button class="btn btn-danger btn-sm" onclick="removeAgent('${a}')" title="Remove this agent"><i class="fas fa-times"></i></button></div>`).join('')}</div>
+            <div class="flex" style="margin-top:8px;"><input type="text" id="newAgentInput" placeholder="New agent name" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;"><button class="btn btn-success" onclick="addAgent()" title="Add new agent">Add</button></div>
+          </div>
+        </div>
+        <hr style="margin:20px 0; border-top:2px solid #e74c3c;">
+        <div style="border:2px solid #e74c3c; border-radius:8px; padding:16px; background:#fdf2f2;">
+          <h3 style="color:#e74c3c;"><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
+          <p style="color:#555; margin-bottom:12px;">This will permanently delete all clients from the database. This action cannot be undone.</p>
+          <button class="btn-clear-all" onclick="clearAllClients()" title="Permanently delete all clients"><i class="fas fa-trash-alt"></i> 🗑️ Clear All Clients</button>
+          <div id="clearStatus" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  async function clearAllClients() {
+    if (!confirm('⚠️ WARNING: This will permanently delete ALL clients. Are you sure?')) return;
+    if (!confirm('⚠️ FINAL WARNING: This cannot be undone. Type "DELETE" to confirm.')) {
+      const input = prompt('Type "DELETE" to confirm:');
+      if (input !== 'DELETE') {
+        document.getElementById('clearStatus').innerHTML = '<span style="color:#e74c3c;">❌ Cancelled.</span>';
+        return;
       }
     }
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: 'Client not found'
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-// ----- DELETE CLIENT -----
-function deleteClient(id) {
-  try {
-    var sheet = getSheet('CLIENTS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "CLIENTS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    var rows = sheet.getDataRange().getValues();
-    for (var i = 1; i < rows.length; i++) {
-      if (rows[i][0] == id) {
-        sheet.deleteRow(i+1);
-        return ContentService.createTextOutput(JSON.stringify({
-          success: true,
-          message: 'Client deleted successfully'
-        })).setMimeType(ContentService.MimeType.JSON);
+    document.getElementById('clearStatus').innerHTML = '<span style="color:#f39c12;">⏳ Deleting all clients...</span>';
+    try {
+      const result = await callAPI('clearAllClients');
+      if (result.success) {
+        const localData = loadLocalData();
+        localData.clients = [];
+        localData.payments = [];
+        localData.tickets = [];
+        localData.nextClientId = 1;
+        saveLocalData(localData);
+        addAuditLog('Clear All Clients', currentUser.username, 'All clients deleted by admin.');
+        document.getElementById('clearStatus').innerHTML = '<span style="color:#27ae60;">✅ All clients deleted successfully!</span>';
+        await syncWithServer();
+        navigateTo('clients');
+      } else {
+        document.getElementById('clearStatus').innerHTML = '<span style="color:#e74c3c;">❌ Error: ' + (result.error || 'Unknown error') + '</span>';
       }
+    } catch(error) {
+      document.getElementById('clearStatus').innerHTML = '<span style="color:#e74c3c;">❌ Error: ' + error.message + '</span>';
     }
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: 'Client not found'
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
   }
-}
 
-// ----- CLEAR ALL CLIENTS -----
-function clearAllClients() {
-  try {
-    var sheet = getSheet('CLIENTS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "CLIENTS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    var data = sheet.getDataRange().getValues();
-    if (data.length <= 1) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: true,
-        message: 'No clients to delete'
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    // Delete all rows except header (row 1)
-    var totalRows = data.length;
-    if (totalRows > 1) {
-      sheet.deleteRows(2, totalRows - 1);
-    }
-    // Reset the nextClientId counter in the sheet? We'll handle this in the HTML.
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      message: 'All clients deleted successfully'
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+  function addPlan() {
+    const name = document.getElementById('newPlanName').value.trim();
+    const price = parseFloat(document.getElementById('newPlanPrice').value);
+    if (!name) return alert('Enter plan name.');
+    if (isNaN(price) || price <= 0) return alert('Enter valid price.');
+    const data = loadLocalData();
+    if (data.config.plans.find(p => p.name === name)) return alert('Plan already exists.');
+    data.config.plans.push({ name, price });
+    saveLocalData(data);
+    addAuditLog('Plan Added', currentUser.username, 'Added plan ' + name + ' with price ' + price);
+    navigateTo('settings');
   }
-}
 
-// ----- GET PAYMENTS -----
-function getPayments(clientId) {
-  try {
-    var sheet = getSheet('PAYMENTS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "PAYMENTS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
+  function removePlan(idx) {
+    const data = loadLocalData();
+    const plan = data.config.plans[idx];
+    if (!plan) return;
+    if (!confirm('Remove plan "' + plan.name + '"?')) return;
+    data.config.plans.splice(idx, 1);
+    saveLocalData(data);
+    addAuditLog('Plan Removed', currentUser.username, 'Removed plan ' + plan.name);
+    navigateTo('settings');
+  }
+
+  function addAgent() {
+    const name = document.getElementById('newAgentInput').value.trim();
+    if (!name) return alert('Enter agent name.');
+    const data = loadLocalData();
+    if (data.config.agents.includes(name)) return alert('Agent already exists.');
+    data.config.agents.push(name);
+    saveLocalData(data);
+    addAuditLog('Agent Added', currentUser.username, 'Added agent ' + name);
+    navigateTo('settings');
+  }
+
+  function removeAgent(name) {
+    if (!confirm('Remove agent "' + name + '"?')) return;
+    const data = loadLocalData();
+    data.config.agents = data.config.agents.filter(a => a !== name);
+    saveLocalData(data);
+    addAuditLog('Agent Removed', currentUser.username, 'Removed agent ' + name);
+    navigateTo('settings');
+  }
+
+  // ----- USERS (admin only) -----
+  function renderUsers(container, data) {
+    if (currentUser.role !== 'admin') {
+      container.innerHTML = '<div class="card"><p>Access denied. Admins only.</p></div>';
+      return;
     }
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 2) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: true,
-        data: []
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    var headers = data[0];
-    var payments = [];
-    for (var i = 1; i < data.length; i++) {
-      if (clientId && data[i][0] != clientId) continue;
-      var row = data[i];
-      var payment = {};
-      for (var j = 0; j < headers.length; j++) {
-        payment[headers[j]] = row[j];
+    let html = `
+      <div class="card">
+        <div class="flex-between">
+          <h2><i class="fas fa-user-cog"></i> Manage Users</h2>
+          <button class="btn btn-success" onclick="showAddUserForm()" title="Add new user"><i class="fas fa-user-plus"></i> Add User</button>
+        </div>
+        <div class="table-responsive">
+          <table><thead><tr><th>Username</th><th>Role</th><th>Email</th><th>Actions</th></tr></thead>
+          <tbody>${data.users.map(user => {
+            const isSelf = user.Username === currentUser.username;
+            return `<tr><td>${user.Username}</td><td>${user.Role}</td><td>${user.Email || ''}</td><td>${!isSelf ? `<button class="btn btn-warning btn-sm" onclick="showResetUserPassword('${user.Username}')" title="Reset password for this user"><i class="fas fa-key"></i></button><button class="btn btn-danger btn-sm" onclick="deleteUser('${user.Username}')" title="Delete this user"><i class="fas fa-trash"></i></button>` : '<span style="color:#999;">(you)</span>'}</td></tr>`;
+          }).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  }
+
+  function showAddUserForm() {
+    if (currentUser.role !== 'admin') return;
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3>Add New User</h3>
+        <form id="addUserForm" onsubmit="addUser(event)">
+          <div class="form-group"><label>Username *</label><input type="text" id="uUsername" required></div>
+          <div class="form-group"><label>Password *</label><input type="password" id="uPassword" required></div>
+          <div class="form-group"><label>Email</label><input type="email" id="uEmail"></div>
+          <div class="form-group"><label>Role</label><select id="uRole"><option value="user">User</option><option value="admin">Admin</option></select></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Add User</button>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  async function addUser(e) {
+    e.preventDefault();
+    const username = document.getElementById('uUsername').value.trim();
+    if (!username) return alert('Username required.');
+    const password = document.getElementById('uPassword').value.trim();
+    if (!password || password.length < 4) return alert('Password at least 4 characters.');
+    const email = document.getElementById('uEmail').value.trim() || '';
+    const role = document.getElementById('uRole').value;
+    try {
+      const result = await callAPI('addUser', { username, password, email, role });
+      if (result.success) {
+        await syncUsers();
+        addAuditLog('User Added', currentUser.username, 'Added user ' + username + ' (' + role + ')');
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        navigateTo('users');
+      } else {
+        alert('Error adding user: ' + (result.error || 'Unknown error'));
       }
-      payments.push(payment);
+    } catch(error) {
+      alert('Error: ' + error.message);
     }
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      data: payments
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
   }
-}
 
-// ----- ADD PAYMENT -----
-function addPayment(data) {
-  try {
-    var sheet = getSheet('PAYMENTS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "PAYMENTS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
+  async function deleteUser(username) {
+    if (username === currentUser.username) {
+      alert('You cannot delete yourself.');
+      return;
     }
-    var row = [
-      data.clientId || '',
-      data.amount || 0,
-      data.date || new Date().toISOString().split('T')[0],
-      data.period || '',
-      data.orNumber || '',
-      data.method || 'Cash'
-    ];
-    sheet.appendRow(row);
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      message: 'Payment recorded successfully'
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-// ----- GET TICKETS -----
-function getTickets() {
-  try {
-    var sheet = getSheet('TICKETS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "TICKETS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 2) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: true,
-        data: []
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    var headers = data[0];
-    var tickets = [];
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      var ticket = {};
-      for (var j = 0; j < headers.length; j++) {
-        ticket[headers[j]] = row[j];
+    if (!confirm('Delete user "' + username + '"?')) return;
+    try {
+      const result = await callAPI('deleteUser', { username });
+      if (result.success) {
+        await syncUsers();
+        addAuditLog('User Deleted', currentUser.username, 'Deleted user ' + username);
+        navigateTo('users');
+      } else {
+        alert('Error deleting user: ' + (result.error || 'Unknown error'));
       }
-      tickets.push(ticket);
+    } catch(error) {
+      alert('Error: ' + error.message);
     }
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      data: tickets
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
   }
-}
 
-// ----- ADD TICKET -----
-function addTicket(data) {
-  try {
-    var sheet = getSheet('TICKETS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "TICKETS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
+  // ----- AUDIT LOG -----
+  function renderAudit(container, data) {
+    if (currentUser.role !== 'admin') {
+      container.innerHTML = '<div class="card"><p>Access denied. Admins only.</p></div>';
+      return;
     }
-    var row = [
-      data.id || (sheet.getLastRow()),
-      data.clientId || '',
-      data.subject || '',
-      data.description || '',
-      data.priority || 'Medium',
-      data.status || 'Open',
-      data.createdAt || new Date().toISOString().split('T')[0],
-      data.updates ? JSON.stringify(data.updates) : ''
-    ];
-    sheet.appendRow(row);
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      message: 'Ticket created successfully'
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    let html = `
+      <div class="card">
+        <h2><i class="fas fa-history"></i> Audit Log</h2>
+        <div class="table-responsive">
+          <table><thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+          <tbody>${data.auditLog.length === 0 ? '<tr><td colspan="4" class="text-center">No logs.</td></tr>' :
+            [...data.auditLog].reverse().map(log => `<tr><td>${new Date(log.timestamp).toLocaleString()}</td><td>${log.username}</td><td>${log.action}</td><td>${log.details || ''}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
   }
-}
 
-// ----- UPDATE TICKET -----
-function updateTicket(data) {
-  try {
-    var sheet = getSheet('TICKETS');
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Sheet "TICKETS" not found'
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    var rows = sheet.getDataRange().getValues();
-    for (var i = 1; i < rows.length; i++) {
-      if (rows[i][0] == data.id) {
-        var row = [
-          data.id,
-          data.clientId || '',
-          data.subject || '',
-          data.description || '',
-          data.priority || 'Medium',
-          data.status || 'Open',
-          data.createdAt || '',
-          data.updates ? JSON.stringify(data.updates) : ''
-        ];
-        sheet.getRange(i+1, 1, 1, row.length).setValues([row]);
-        return ContentService.createTextOutput(JSON.stringify({
-          success: true,
-          message: 'Ticket updated successfully'
-        })).setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: 'Ticket not found'
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
+  // ============================================================
+  // INIT
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', function() {
+        if (currentUser) navigateTo(this.dataset.page);
+      });
+    });
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('appScreen').classList.add('hidden');
+    checkForUpdates();
+  });
 
-// ----- GET DASHBOARD -----
-function getDashboard() {
-  try {
-    var clientsResult = getClients();
-    var clientsData = JSON.parse(clientsResult.getContent());
-    var clients = clientsData.success ? clientsData.data : [];
-    
-    var paymentsResult = getPayments(null);
-    var paymentsData = JSON.parse(paymentsResult.getContent());
-    var payments = paymentsData.success ? paymentsData.data : [];
-    
-    var totalClients = clients.length;
-    var activeClients = 0;
-    var totalCollectible = 0;
-    
-    for (var i = 0; i < clients.length; i++) {
-      if (clients[i].Status === 'Active') {
-        activeClients++;
-        totalCollectible += parseFloat(clients[i].Amount) || 0;
-      }
-    }
-    
-    var totalCollected = 0;
-    for (var j = 0; j < payments.length; j++) {
-      totalCollected += parseFloat(payments[j].Amount) || 0;
-    }
-    
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      data: {
-        totalClients: totalClients,
-        activeClients: activeClients,
-        totalCollectible: totalCollectible,
-        totalCollected: totalCollected
-      }
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
+  // ============================================================
+  // GLOBAL EXPOSURE
+  // ============================================================
+  window.showAddClientForm = showAddClientForm;
+  window.editClient = editClient;
+  window.deleteClient = deleteClient;
+  window.disconnectClient = disconnectClient;
+  window.reconnectClient = reconnectClient;
+  window.viewHistory = viewHistory;
+  window.filterClients = filterClients;
+  window.filterByAddress = filterByAddress;
+  window.togglePayFull = togglePayFull;
+  window.updatePayAmount = updatePayAmount;
+  window.addPlan = addPlan;
+  window.removePlan = removePlan;
+  window.addAgent = addAgent;
+  window.removeAgent = removeAgent;
+  window.showAddUserForm = showAddUserForm;
+  window.deleteUser = deleteUser;
+  window.showCreateTicket = showCreateTicket;
+  window.showCreateTicketAny = showCreateTicketAny;
+  window.viewTicket = viewTicket;
+  window.updateTicketStatus = updateTicketStatus;
+  window.addTicketUpdate = addTicketUpdate;
+  window.closeModal = closeModal;
+  window.showResetPassword = showResetPassword;
+  window.navigateTo = navigateTo;
+  window.autoFillPrice = autoFillPrice;
+  window.showChangePassword = showChangePassword;
+  window.changePassword = changePassword;
+  window.showResetUserPassword = showResetUserPassword;
+  window.resetUserPassword = resetUserPassword;
+  window.refreshApp = refreshApp;
+  window.syncWithServer = syncWithServer;
+  window.computeDueDate = computeDueDate;
+  window.clearAllClients = clearAllClients;
+  window.syncUsers = syncUsers;
+</script>
+</body>
+</html>
