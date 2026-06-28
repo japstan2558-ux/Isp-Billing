@@ -134,14 +134,14 @@
 
 <script>
   // ============================================================
-  // API CONFIGURATION - IYONG WEB APP URL
+  // API CONFIGURATION - PALITAN ITO NG BAGONG URL
   // ============================================================
-  const API_URL = 'https://script.google.com/macros/s/AKfycbzeyVN9cDkkxt1I49pb0ys6FEKpM6bfFivmfARvaUNnVkOi90ANtk6wr2fyHy_YJUNp/exec';
+  const API_URL = 'https://script.google.com/macros/s/YOUR_NEW_WEB_APP_ID/exec';
 
   // ============================================================
   // APP VERSION
   // ============================================================
-  const APP_VERSION = '3.0.2';
+  const APP_VERSION = '3.1.0';
 
   // ============================================================
   // DATA LAYER (local storage for offline cache)
@@ -196,6 +196,35 @@
 
   function saveLocalData(data) {
     localStorage.setItem(DB_KEY, JSON.stringify(data));
+  }
+
+  // ============================================================
+  // HELPER: Compute Due Date (30 days after installation)
+  // ============================================================
+  function computeDueDate(installDateStr) {
+    const date = new Date(installDateStr);
+    date.setDate(date.getDate() + 30);
+    return date.toISOString().split('T')[0];
+  }
+
+  // ============================================================
+  // HELPER: Count 30-day periods from installation to now
+  // ============================================================
+  function countPeriods(installDateStr, currentDate) {
+    const install = new Date(installDateStr);
+    const now = currentDate || new Date();
+    const diffTime = now - install;
+    if (diffTime < 0) return 0;
+    // Count how many 30-day periods have passed
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30));
+  }
+
+  // ============================================================
+  // HELPER: Get total due based on 30-day periods
+  // ============================================================
+  function getTotalDue(installDateStr, monthlyAmount, currentDate) {
+    const periods = countPeriods(installDateStr, currentDate);
+    return periods * monthlyAmount;
   }
 
   // ============================================================
@@ -626,7 +655,7 @@
   }
 
   // ============================================================
-  // HELPERS
+  // HELPERS - WITH 30-DAY PERIOD COMPUTATION
   // ============================================================
   function getClientsWithBalance(data) {
     const now = new Date();
@@ -634,13 +663,9 @@
       const totalPaid = data.payments
         .filter(p => p.ClientID == client.ID)
         .reduce((sum, p) => sum + Number(p.Amount), 0);
-      let monthsDue = 0;
-      const due = new Date(client.DueDate);
-      while (due <= now) {
-        monthsDue++;
-        due.setMonth(due.getMonth() + 1);
-      }
-      const totalDue = monthsDue * Number(client.Amount);
+      
+      // Compute total due based on 30-day periods from installation
+      const totalDue = getTotalDue(client.InstallDate, Number(client.Amount), now);
       const balance = Math.max(0, totalDue - totalPaid);
       return { ...client, balance, totalPaid, totalDue };
     });
@@ -830,6 +855,7 @@
             <td>${client.Contact || 'N/A'}</td>
             <td>${client.Plan || ''}</td>
             <td>₱${Number(client.Amount).toFixed(2)}</td>
+            <td>${client.InstallDate || ''}</td>
             <td>${client.DueDate || ''}</td>
             <td>${statusBadge}</td>
             <td>
@@ -847,7 +873,7 @@
     return `
       <div class="table-responsive">
         <table>
-          <thead><tr><th>Acct #</th><th>Name</th><th>Contact</th><th>Plan</th><th>Monthly</th><th>Due Date</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Acct #</th><th>Name</th><th>Contact</th><th>Plan</th><th>Monthly</th><th>Install Date</th><th>Due Date</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -889,6 +915,10 @@
             <label>Agent</label>
             <select id="cAgent"></select>
           </div>
+          <div class="form-group">
+            <label>Due Date (auto: +30 days)</label>
+            <input type="text" id="cDueDatePreview" readonly style="background:#f0f0f0; color:#555;">
+          </div>
           <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Save</button>
         </form>
       </div>
@@ -896,7 +926,20 @@
     document.getElementById('modalContainer').appendChild(modal);
     populatePlanSelect('cPlan', data);
     populateAgentSelect('cAgent', data);
-    document.getElementById('cInstallDate').value = new Date().toISOString().split('T')[0];
+    const installDateInput = document.getElementById('cInstallDate');
+    installDateInput.value = new Date().toISOString().split('T')[0];
+    // Preview due date
+    installDateInput.addEventListener('change', function() {
+      if (this.value) {
+        document.getElementById('cDueDatePreview').value = computeDueDate(this.value);
+      }
+    });
+    // Trigger initial preview
+    setTimeout(() => {
+      if (installDateInput.value) {
+        document.getElementById('cDueDatePreview').value = computeDueDate(installDateInput.value);
+      }
+    }, 100);
   }
 
   function populatePlanSelect(id, data) {
@@ -925,9 +968,8 @@
     const amount = parseFloat(document.getElementById('cAmount').value);
     if (isNaN(amount) || amount <= 0) return alert('Valid amount required.');
     const installDate = document.getElementById('cInstallDate').value || new Date().toISOString().split('T')[0];
-    const due = new Date(installDate);
-    due.setMonth(due.getMonth() + 1);
-    const dueDate = due.toISOString().split('T')[0];
+    // Due date = installation date + 30 days
+    const dueDate = computeDueDate(installDate);
 
     const newClient = {
       id: data.nextClientId++,
@@ -945,11 +987,9 @@
       statusLog: []
     };
     
-    // Save to server
     try {
       const result = await callAPI('addClient', newClient);
       if (result.success) {
-        // Update local cache
         data.clients.push(newClient);
         saveLocalData(data);
         addAuditLog('Client Added', currentUser.username, 'Added client #' + newClient.id + ': ' + newClient.name);
@@ -984,6 +1024,9 @@
           </div>
           <div class="form-group"><label>Monthly Amount</label><input type="number" id="eAmount" step="0.01" value="${client.Amount || 0}" required></div>
           <div class="form-group"><label>Installation Date</label><input type="date" id="eInstallDate" value="${client.InstallDate || ''}"></div>
+          <div class="form-group"><label>Due Date (auto: +30 days)</label>
+            <input type="text" id="eDueDatePreview" readonly style="background:#f0f0f0; color:#555;" value="${client.DueDate || ''}">
+          </div>
           <div class="form-group"><label>Account Name</label><input type="text" id="eAccount" value="${client.AccountName || ''}"></div>
           <div class="form-group"><label>Napbox</label><input type="text" id="eNapbox" value="${client.Napbox || ''}"></div>
           <div class="form-group">
@@ -1005,6 +1048,13 @@
     document.getElementById('ePlan').value = client.Plan || '';
     document.getElementById('eAgent').value = client.Agent || '';
     document.getElementById('eStatus').value = client.Status || 'Active';
+    
+    // Preview due date on install date change
+    document.getElementById('eInstallDate').addEventListener('change', function() {
+      if (this.value) {
+        document.getElementById('eDueDatePreview').value = computeDueDate(this.value);
+      }
+    });
   }
 
   async function updateClient(e, id) {
@@ -1017,12 +1067,9 @@
     const amount = parseFloat(document.getElementById('eAmount').value);
     if (isNaN(amount) || amount <= 0) return alert('Valid amount required.');
     const installDate = document.getElementById('eInstallDate').value || client.InstallDate;
-    let dueDate = client.DueDate;
-    if (installDate !== client.InstallDate) {
-      const due = new Date(installDate);
-      due.setMonth(due.getMonth() + 1);
-      dueDate = due.toISOString().split('T')[0];
-    }
+    // Recompute due date based on new install date (30 days after)
+    const dueDate = computeDueDate(installDate);
+    
     const oldStatus = client.Status;
     const newStatus = document.getElementById('eStatus').value;
     
@@ -1045,7 +1092,6 @@
     try {
       const result = await callAPI('updateClient', updatedClient);
       if (result.success) {
-        // Update local cache
         Object.assign(client, updatedClient);
         if (oldStatus !== newStatus) {
           let logs = [];
@@ -1171,7 +1217,7 @@
     document.getElementById('modalContainer').appendChild(modal);
   }
 
-  // ----- TICKETS -----
+  // ----- TICKETS (unchanged) -----
   function showCreateTicket(clientId) {
     const data = loadLocalData();
     const client = data.clients.find(c => c.ID == clientId);
@@ -1825,6 +1871,7 @@
   window.resetUserPassword = resetUserPassword;
   window.refreshApp = refreshApp;
   window.syncWithServer = syncWithServer;
+  window.computeDueDate = computeDueDate;
 </script>
 </body>
 </html>
