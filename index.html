@@ -17,7 +17,8 @@
     .app-header .brand small { font-size: 13px; font-weight: normal; display: block; color: #bdc3c7; }
     .app-header .clock { font-size: 14px; color: #bdc3c7; text-align: right; }
     .app-header .user-info { font-size: 14px; color: #ecf0f1; margin: 0 12px; }
-    .app-header .user-info a { color: #bdc3c7; text-decoration: underline; }
+    .app-header .user-info a { color: #bdc3c7; text-decoration: underline; cursor: pointer; }
+    .app-header .user-info a:hover { color: #fff; }
     .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
     .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 16px; }
     .card h2 { border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-bottom: 16px; color: #2c3e50; font-size: 20px; }
@@ -37,7 +38,7 @@
     .table-responsive { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th { background: #ecf0f1; text-align: left; padding: 10px; }
-    td { padding: 10px; border-bottom: 1px solid #ecf0f1; }
+    td { padding: 10px; border-bottom: 1px solid #ecf0f1; vertical-align: middle; }
     .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
     .badge-success { background: #d4edda; color: #155724; }
     .badge-danger { background: #f8d7da; color: #721c24; }
@@ -68,7 +69,6 @@
     .modal-box h3 { margin-bottom: 16px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
     .modal-close { float: right; cursor: pointer; font-size: 24px; color: #999; }
     .modal-close:hover { color: #333; }
-    .tag { display: inline-block; background: #ecf0f1; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin: 2px; }
     .update-log { background: #f8f9fa; padding: 8px; border-radius: 6px; margin: 4px 0; font-size: 13px; }
     @media (max-width: 500px) {
       .stats-grid { grid-template-columns: 1fr 1fr; }
@@ -105,6 +105,7 @@
     <div class="clock" id="clockDisplay">Loading time...</div>
     <div class="user-info">
       <span id="currentUserDisplay"></span> |
+      <a href="#" onclick="showChangePassword()"><i class="fas fa-key"></i> Change Password</a> |
       <a href="#" onclick="logout()">Logout</a>
     </div>
   </div>
@@ -129,6 +130,11 @@
 <div id="modalContainer"></div>
 
 <script>
+  // ============================================================
+  // APP VERSION (Auto-Update)
+  // ============================================================
+  const APP_VERSION = '2.0.0';
+
   // ============================================================
   // DATA LAYER
   // ============================================================
@@ -192,6 +198,51 @@
   let chartInstance = null;
 
   // ============================================================
+  // AUTO-UPDATE CHECK
+  // ============================================================
+  function checkForUpdates() {
+    const currentVersion = APP_VERSION;
+    const storedVersion = localStorage.getItem('app_version');
+
+    if (!storedVersion) {
+      localStorage.setItem('app_version', currentVersion);
+      return;
+    }
+
+    if (storedVersion !== currentVersion) {
+      if (sessionStorage.getItem('update_notified') === 'true') return;
+      sessionStorage.setItem('update_notified', 'true');
+      showUpdateNotification();
+    }
+  }
+
+  function showUpdateNotification() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'updateModal';
+    modal.style.zIndex = '2000';
+    modal.innerHTML = `
+      <div class="modal-box" style="text-align:center; max-width:400px;">
+        <h3 style="color:#27ae60;"><i class="fas fa-sync-alt"></i> New Update Available!</h3>
+        <p style="margin:16px 0; color:#555;">The app has been updated with new features.</p>
+        <p style="font-size:13px; color:#999;">Version ${APP_VERSION}</p>
+        <button class="btn btn-success btn-block" onclick="refreshApp()" style="font-size:18px; padding:14px;">
+          <i class="fas fa-sync"></i> Refresh Now
+        </button>
+        <button class="btn btn-outline btn-block" onclick="document.getElementById('updateModal').remove()" style="margin-top:8px;">
+          Later
+        </button>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  function refreshApp() {
+    localStorage.setItem('app_version', APP_VERSION);
+    window.location.reload(true);
+  }
+
+  // ============================================================
   // REAL-TIME CLOCK
   // ============================================================
   function updateClock() {
@@ -223,6 +274,7 @@
     document.getElementById('currentUserDisplay').textContent = user.username + ' (' + user.role + ')';
     const isAdmin = user.role === 'admin';
     document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
+    checkForUpdates();
     navigateTo('dashboard');
   }
 
@@ -235,7 +287,7 @@
   }
 
   // ============================================================
-  // PASSWORD RESET (simulated)
+  // PASSWORD RESET (simulated via email)
   // ============================================================
   let resetCodes = {};
 
@@ -308,13 +360,151 @@
     }
     user.password = newPass;
     saveData(data);
-    addAuditLog('Password Reset', foundUser, `Password changed via reset.`);
+    addAuditLog('Password Reset', foundUser, 'Password changed via reset.');
     delete resetCodes[foundUser];
     document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#27ae60;">✅ Password updated! You can now login.</span>';
     setTimeout(() => {
       const modal = document.querySelector('.modal-overlay');
       if (modal) modal.remove();
     }, 2000);
+  }
+
+  // ============================================================
+  // CHANGE PASSWORD (Logged-in User)
+  // ============================================================
+  function showChangePassword() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3><i class="fas fa-key"></i> Change Password</h3>
+        <form id="changePasswordForm" onsubmit="changePassword(event)">
+          <div class="form-group">
+            <label>Current Password</label>
+            <input type="password" id="oldPassword" required>
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="newPasswordChange" required minlength="4">
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="confirmPasswordChange" required>
+          </div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-save"></i> Update Password</button>
+          <div id="changePassStatus" style="margin-top:8px;"></div>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  function changePassword(e) {
+    e.preventDefault();
+    const oldPass = document.getElementById('oldPassword').value.trim();
+    const newPass = document.getElementById('newPasswordChange').value.trim();
+    const confirmPass = document.getElementById('confirmPasswordChange').value.trim();
+
+    if (!oldPass || !newPass || !confirmPass) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">All fields are required.</span>';
+      return;
+    }
+    if (newPass.length < 4) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">New password must be at least 4 characters.</span>';
+      return;
+    }
+    if (newPass !== confirmPass) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">Passwords do not match.</span>';
+      return;
+    }
+
+    const data = loadData();
+    const user = data.users.find(u => u.username === currentUser.username);
+    if (!user) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">User not found.</span>';
+      return;
+    }
+    if (user.password !== oldPass) {
+      document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">Current password is incorrect.</span>';
+      return;
+    }
+
+    user.password = newPass;
+    saveData(data);
+    addAuditLog('Password Changed', currentUser.username, 'Password changed by user.');
+    document.getElementById('changePassStatus').innerHTML = '<span style="color:#27ae60;">✅ Password updated successfully!</span>';
+    setTimeout(() => {
+      const modal = document.querySelector('.modal-overlay');
+      if (modal) modal.remove();
+    }, 1500);
+  }
+
+  // ============================================================
+  // ADMIN: Reset User Password
+  // ============================================================
+  function showResetUserPassword(username) {
+    if (currentUser.role !== 'admin') {
+      alert('Admin only.');
+      return;
+    }
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <span class="modal-close" onclick="closeModal(this)">&times;</span>
+        <h3><i class="fas fa-key"></i> Reset Password for ${username}</h3>
+        <form id="resetUserPassForm" onsubmit="resetUserPassword(event, '${username}')">
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="resetNewPass" required minlength="4">
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="password" id="resetConfirmPass" required>
+          </div>
+          <button type="submit" class="btn btn-warning btn-block"><i class="fas fa-save"></i> Reset Password</button>
+          <div id="resetUserStatus" style="margin-top:8px;"></div>
+        </form>
+      </div>
+    `;
+    document.getElementById('modalContainer').appendChild(modal);
+  }
+
+  function resetUserPassword(e, username) {
+    e.preventDefault();
+    const newPass = document.getElementById('resetNewPass').value.trim();
+    const confirmPass = document.getElementById('resetConfirmPass').value.trim();
+
+    if (!newPass || !confirmPass) {
+      document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">All fields are required.</span>';
+      return;
+    }
+    if (newPass.length < 4) {
+      document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">Password must be at least 4 characters.</span>';
+      return;
+    }
+    if (newPass !== confirmPass) {
+      document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">Passwords do not match.</span>';
+      return;
+    }
+
+    const data = loadData();
+    const user = data.users.find(u => u.username === username);
+    if (!user) {
+      document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">User not found.</span>';
+      return;
+    }
+
+    user.password = newPass;
+    saveData(data);
+    addAuditLog('Password Reset (Admin)', currentUser.username, 'Admin reset password for ' + username);
+    document.getElementById('resetUserStatus').innerHTML = '<span style="color:#27ae60;">✅ Password reset successfully!</span>';
+    setTimeout(() => {
+      const modal = document.querySelector('.modal-overlay');
+      if (modal) modal.remove();
+      navigateTo('users');
+    }, 1500);
   }
 
   function closeModal(element) {
@@ -370,7 +560,6 @@
         history.push({ date: log.date, type: log.action, details: log.note || '' });
       });
     }
-    // Tickets related to this client
     const tickets = data.tickets.filter(t => t.clientId === clientId);
     tickets.forEach(t => {
       history.push({ date: t.createdAt, type: 'Ticket', details: t.subject + ' - ' + t.status });
@@ -420,7 +609,6 @@
     const percentage = totalCollectible > 0 ? ((totalCollected / totalCollectible) * 100) : 0;
 
     const dueAccounts = clientsWithBalance.filter(c => c.status === 'Active' && c.balance > 0);
-    // Tickets
     const openTickets = data.tickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
     const recentTickets = [...data.tickets].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0,5);
 
@@ -477,7 +665,6 @@
     `;
     container.innerHTML = html;
 
-    // Render chart
     setTimeout(() => {
       const ctx = document.getElementById('dashboardChart').getContext('2d');
       if (chartInstance) chartInstance.destroy();
@@ -496,7 +683,7 @@
     }, 100);
   }
 
-  // ----- CLIENTS (with Search) -----
+  // ----- CLIENTS -----
   function renderClients(container, data, clientsWithBalance) {
     let html = `
       <div class="card">
@@ -575,7 +762,7 @@
     }
   }
 
-  // ----- CLIENT CRUD -----
+  // ----- CLIENT ADD/EDIT -----
   function showAddClientForm() {
     const data = loadData();
     const modal = document.createElement('div');
@@ -657,7 +844,7 @@
     };
     data.clients.push(newClient);
     saveData(data);
-    addAuditLog('Client Added', currentUser.username, `Added client #${newClient.id}: ${newClient.name}`);
+    addAuditLog('Client Added', currentUser.username, 'Added client #' + newClient.id + ': ' + newClient.name);
     closeModal(document.querySelector('.modal-overlay .modal-close'));
     navigateTo('clients');
   }
@@ -738,11 +925,11 @@
       client.statusLog.push({
         date: new Date().toISOString().split('T')[0],
         action: newStatus === 'Active' ? 'Reconnected' : 'Disconnected',
-        note: `Status changed from ${oldStatus} to ${newStatus}`
+        note: 'Status changed from ' + oldStatus + ' to ' + newStatus
       });
     }
     saveData(data);
-    addAuditLog('Client Updated', currentUser.username, `Client #${id} updated.`);
+    addAuditLog('Client Updated', currentUser.username, 'Client #' + id + ' updated.');
     closeModal(document.querySelector('.modal-overlay .modal-close'));
     navigateTo('clients');
   }
@@ -754,7 +941,7 @@
     if (!client) return;
     data.clients = data.clients.filter(c => c.id !== id);
     saveData(data);
-    addAuditLog('Client Deleted', currentUser.username, `Deleted client #${id}: ${client.name}`);
+    addAuditLog('Client Deleted', currentUser.username, 'Deleted client #' + id + ': ' + client.name);
     navigateTo('clients');
   }
 
@@ -767,7 +954,7 @@
     if (!client.statusLog) client.statusLog = [];
     client.statusLog.push({ date: new Date().toISOString().split('T')[0], action: 'Disconnected', note: 'Manually disconnected' });
     saveData(data);
-    addAuditLog('Client Disconnected', currentUser.username, `Client #${id} disconnected.`);
+    addAuditLog('Client Disconnected', currentUser.username, 'Client #' + id + ' disconnected.');
     navigateTo('clients');
   }
 
@@ -780,7 +967,7 @@
     if (!client.statusLog) client.statusLog = [];
     client.statusLog.push({ date: new Date().toISOString().split('T')[0], action: 'Reconnected', note: 'Manually reconnected' });
     saveData(data);
-    addAuditLog('Client Reconnected', currentUser.username, `Client #${id} reconnected.`);
+    addAuditLog('Client Reconnected', currentUser.username, 'Client #' + id + ' reconnected.');
     navigateTo('clients');
   }
 
@@ -800,13 +987,7 @@
             <thead><tr><th>Date</th><th>Type</th><th>Details</th></tr></thead>
             <tbody>
               ${history.length === 0 ? '<tr><td colspan="3" class="text-center">No history.</td></tr>' :
-                history.map(h => `
-                  <tr>
-                    <td>${h.date}</td>
-                    <td>${h.type}</td>
-                    <td>${h.type === 'Payment' ? '₱' + Number(h.amount).toFixed(2) : h.details}</td>
-                  </tr>
-                `).join('')
+                history.map(h => `<tr><td>${h.date}</td><td>${h.type}</td><td>${h.type === 'Payment' ? '₱' + Number(h.amount).toFixed(2) : h.details}</td></tr>`).join('')
               }
             </tbody>
           </table>
@@ -816,7 +997,7 @@
     document.getElementById('modalContainer').appendChild(modal);
   }
 
-  // ----- TICKET CREATION (from client actions) -----
+  // ----- TICKETS -----
   function showCreateTicket(clientId) {
     const data = loadData();
     const client = data.clients.find(c => c.id === clientId);
@@ -860,12 +1041,11 @@
     };
     data.tickets.push(ticket);
     saveData(data);
-    addAuditLog('Ticket Created', currentUser.username, `Ticket #${ticket.id} for client #${clientId}: ${subject}`);
+    addAuditLog('Ticket Created', currentUser.username, 'Ticket #' + ticket.id + ' for client #' + clientId + ': ' + subject);
     closeModal(document.querySelector('.modal-overlay .modal-close'));
     navigateTo('tickets');
   }
 
-  // ----- TICKETS PAGE -----
   function renderTickets(container, data, clientsWithBalance) {
     let html = `
       <div class="card">
@@ -951,7 +1131,7 @@
     };
     data.tickets.push(ticket);
     saveData(data);
-    addAuditLog('Ticket Created', currentUser.username, `Ticket #${ticket.id} for client #${clientId}: ${subject}`);
+    addAuditLog('Ticket Created', currentUser.username, 'Ticket #' + ticket.id + ' for client #' + clientId + ': ' + subject);
     closeModal(document.querySelector('.modal-overlay .modal-close'));
     navigateTo('tickets');
   }
@@ -1011,17 +1191,16 @@
     });
     ticket.status = newStatus;
     saveData(data);
-    addAuditLog('Ticket Updated', currentUser.username, `Ticket #${id} status changed to ${newStatus}`);
+    addAuditLog('Ticket Updated', currentUser.username, 'Ticket #' + id + ' status changed to ' + newStatus);
     closeModal(document.querySelector('.modal-overlay .modal-close'));
     navigateTo('tickets');
   }
 
   function updateTicketStatus(id) {
-    // quick update via modal? we can reuse viewTicket.
     viewTicket(id);
   }
 
-  // ----- PAYMENTS (unchanged from previous version, but we'll keep) -----
+  // ----- PAYMENTS -----
   function renderPayments(container, data, clientsWithBalance) {
     let html = `
       <div class="card">
@@ -1107,14 +1286,14 @@
     const payment = { clientId, amount, date, period, orNumber, method };
     data.payments.push(payment);
     saveData(data);
-    addAuditLog('Payment Recorded', currentUser.username, `Payment of ₱${amount} for client #${clientId}`);
+    addAuditLog('Payment Recorded', currentUser.username, 'Payment of ₱' + amount + ' for client #' + clientId);
     document.getElementById('paymentForm').reset();
     document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
     alert('Payment saved.');
     navigateTo('payments');
   }
 
-  // ----- BALANCES (unchanged) -----
+  // ----- BALANCES -----
   function renderBalances(container, data, clientsWithBalance) {
     const totalBalance = clientsWithBalance.reduce((sum, c) => sum + c.balance, 0);
     let html = `
@@ -1142,7 +1321,7 @@
     container.innerHTML = html;
   }
 
-  // ----- SETTINGS (admin only) - updated for plans with prices -----
+  // ----- SETTINGS (admin only) -----
   function renderSettings(container, data) {
     if (currentUser.role !== 'admin') {
       container.innerHTML = '<div class="card"><p>Access denied. Admins only.</p></div>';
@@ -1197,7 +1376,7 @@
     if (data.config.plans.find(p => p.name === name)) return alert('Plan already exists.');
     data.config.plans.push({ name, price });
     saveData(data);
-    addAuditLog('Plan Added', currentUser.username, `Added plan ${name} with price ${price}`);
+    addAuditLog('Plan Added', currentUser.username, 'Added plan ' + name + ' with price ' + price);
     navigateTo('settings');
   }
 
@@ -1205,10 +1384,10 @@
     const data = loadData();
     const plan = data.config.plans[idx];
     if (!plan) return;
-    if (!confirm(`Remove plan "${plan.name}"?`)) return;
+    if (!confirm('Remove plan "' + plan.name + '"?')) return;
     data.config.plans.splice(idx, 1);
     saveData(data);
-    addAuditLog('Plan Removed', currentUser.username, `Removed plan ${plan.name}`);
+    addAuditLog('Plan Removed', currentUser.username, 'Removed plan ' + plan.name);
     navigateTo('settings');
   }
 
@@ -1219,16 +1398,16 @@
     if (data.config.agents.includes(name)) return alert('Agent already exists.');
     data.config.agents.push(name);
     saveData(data);
-    addAuditLog('Agent Added', currentUser.username, `Added agent ${name}`);
+    addAuditLog('Agent Added', currentUser.username, 'Added agent ' + name);
     navigateTo('settings');
   }
 
   function removeAgent(name) {
-    if (!confirm(`Remove agent "${name}"?`)) return;
+    if (!confirm('Remove agent "' + name + '"?')) return;
     const data = loadData();
     data.config.agents = data.config.agents.filter(a => a !== name);
     saveData(data);
-    addAuditLog('Agent Removed', currentUser.username, `Removed agent ${name}`);
+    addAuditLog('Agent Removed', currentUser.username, 'Removed agent ' + name);
     navigateTo('settings');
   }
 
@@ -1251,7 +1430,17 @@
             <tbody>
               ${data.users.map(user => {
                 const isSelf = user.username === currentUser.username;
-                return `<tr><td>${user.username}</td><td>${user.role}</td><td>${user.email || 'N/A'}</td><td>${!isSelf ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${user.username}')"><i class="fas fa-trash"></i></button>` : '<span style="color:#999;">(you)</span>'}</td></tr>`;
+                return `<tr>
+                  <td>${user.username}</td>
+                  <td>${user.role}</td>
+                  <td>${user.email || 'N/A'}</td>
+                  <td>
+                    ${!isSelf ? `
+                      <button class="btn btn-warning btn-sm" onclick="showResetUserPassword('${user.username}')"><i class="fas fa-key"></i></button>
+                      <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.username}')"><i class="fas fa-trash"></i></button>
+                    ` : '<span style="color:#999;">(you)</span>'}
+                  </td>
+                </tr>`;
               }).join('')}
             </tbody>
           </table>
@@ -1296,7 +1485,7 @@
     const role = document.getElementById('uRole').value;
     data.users.push({ username, password, email, role });
     saveData(data);
-    addAuditLog('User Added', currentUser.username, `Added user ${username} (${role})`);
+    addAuditLog('User Added', currentUser.username, 'Added user ' + username + ' (' + role + ')');
     closeModal(document.querySelector('.modal-overlay .modal-close'));
     navigateTo('users');
   }
@@ -1306,11 +1495,11 @@
       alert('You cannot delete yourself.');
       return;
     }
-    if (!confirm(`Delete user "${username}"?`)) return;
+    if (!confirm('Delete user "' + username + '"?')) return;
     const data = loadData();
     data.users = data.users.filter(u => u.username !== username);
     saveData(data);
-    addAuditLog('User Deleted', currentUser.username, `Deleted user ${username}`);
+    addAuditLog('User Deleted', currentUser.username, 'Deleted user ' + username);
     navigateTo('users');
   }
 
@@ -1351,6 +1540,7 @@
     });
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('appScreen').classList.add('hidden');
+    checkForUpdates();
   });
 
   // ============================================================
@@ -1380,6 +1570,12 @@
   window.showResetPassword = showResetPassword;
   window.navigateTo = navigateTo;
   window.autoFillPrice = autoFillPrice;
+  window.showChangePassword = showChangePassword;
+  window.changePassword = changePassword;
+  window.showResetUserPassword = showResetUserPassword;
+  window.resetUserPassword = resetUserPassword;
+  window.refreshApp = refreshApp;
+  window.checkForUpdates = checkForUpdates;
 </script>
 </body>
 </html>
