@@ -69,6 +69,8 @@
     .modal-box h3 { margin-bottom: 16px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
     .modal-close { float: right; cursor: pointer; font-size: 24px; color: #999; }
     .modal-close:hover { color: #333; }
+    .sync-status { font-size: 12px; color: #27ae60; margin-left: 8px; }
+    .sync-status.error { color: #e74c3c; }
     .update-log { background: #f8f9fa; padding: 8px; border-radius: 6px; margin: 4px 0; font-size: 13px; }
     @media (max-width: 500px) {
       .stats-grid { grid-template-columns: 1fr 1fr; }
@@ -107,6 +109,7 @@
       <span id="currentUserDisplay"></span> |
       <a href="#" onclick="showChangePassword()"><i class="fas fa-key"></i> Change Password</a> |
       <a href="#" onclick="logout()">Logout</a>
+      <span id="syncStatus" class="sync-status"><i class="fas fa-cloud"></i> Synced</span>
     </div>
   </div>
 
@@ -131,12 +134,17 @@
 
 <script>
   // ============================================================
-  // APP VERSION (Auto-Update)
+  // API CONFIGURATION - GAMIT ANG IYONG WEB APP URL
   // ============================================================
-  const APP_VERSION = '2.0.0';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwnMMOzdeFvounjiRZja_18aljBZh2BU7gfXIIFOwQzGd-CKzYl7Nr5kiXQeWkgNxO6/exec';
 
   // ============================================================
-  // DATA LAYER
+  // APP VERSION
+  // ============================================================
+  const APP_VERSION = '3.0.0';
+
+  // ============================================================
+  // DATA LAYER (local storage for offline cache)
   // ============================================================
   const DB_KEY = 'shirotech_data';
 
@@ -164,7 +172,7 @@
     };
   }
 
-  function loadData() {
+  function loadLocalData() {
     try {
       const raw = localStorage.getItem(DB_KEY);
       if (!raw) return getDefaultData();
@@ -186,8 +194,90 @@
     }
   }
 
-  function saveData(data) {
+  function saveLocalData(data) {
     localStorage.setItem(DB_KEY, JSON.stringify(data));
+  }
+
+  // ============================================================
+  // API CALLS
+  // ============================================================
+  let isSyncing = false;
+
+  function callAPI(action, data = null) {
+    return new Promise((resolve, reject) => {
+      const url = API_URL + '?action=' + action;
+      const params = new URLSearchParams();
+      if (data) {
+        params.append('data', JSON.stringify(data));
+      }
+      const fullUrl = data ? url + '&' + params.toString() : url;
+      
+      fetch(fullUrl, { method: 'GET' })
+        .then(response => response.text())
+        .then(result => {
+          try {
+            const parsed = JSON.parse(result);
+            if (parsed.error) {
+              reject(new Error(parsed.error));
+            } else {
+              resolve(parsed);
+            }
+          } catch (e) {
+            reject(new Error('Invalid response from server: ' + result));
+          }
+        })
+        .catch(error => reject(error));
+    });
+  }
+
+  // ============================================================
+  // SYNC FUNCTIONS
+  // ============================================================
+  async function syncWithServer() {
+    if (isSyncing) return;
+    isSyncing = true;
+    const statusEl = document.getElementById('syncStatus');
+    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    statusEl.className = 'sync-status';
+
+    try {
+      // Get clients from server
+      const result = await callAPI('getClients');
+      if (result.success && result.data) {
+        const localData = loadLocalData();
+        localData.clients = result.data;
+        saveLocalData(localData);
+      }
+
+      // Get payments
+      const payResult = await callAPI('getPayments');
+      if (payResult.success && payResult.data) {
+        const localData = loadLocalData();
+        localData.payments = payResult.data;
+        saveLocalData(localData);
+      }
+
+      // Get tickets
+      const ticketResult = await callAPI('getTickets');
+      if (ticketResult.success && ticketResult.data) {
+        const localData = loadLocalData();
+        localData.tickets = ticketResult.data;
+        saveLocalData(localData);
+      }
+
+      statusEl.innerHTML = '<i class="fas fa-cloud"></i> Synced';
+      statusEl.className = 'sync-status';
+      
+      // Refresh current page
+      if (currentUser) {
+        renderPage(currentPage);
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Offline';
+      statusEl.className = 'sync-status error';
+    }
+    isSyncing = false;
   }
 
   // ============================================================
@@ -196,6 +286,7 @@
   let currentUser = null;
   let currentPage = 'dashboard';
   let chartInstance = null;
+  let syncInterval = null;
 
   // ============================================================
   // AUTO-UPDATE CHECK
@@ -262,7 +353,7 @@
     e.preventDefault();
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value.trim();
-    const data = loadData();
+    const data = loadLocalData();
     const user = data.users.find(u => u.username === username && u.password === password);
     if (!user) {
       document.getElementById('loginError').textContent = 'Invalid username or password.';
@@ -274,11 +365,19 @@
     document.getElementById('currentUserDisplay').textContent = user.username + ' (' + user.role + ')';
     const isAdmin = user.role === 'admin';
     document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
+    
+    // Start auto-sync every 30 seconds
+    if (syncInterval) clearInterval(syncInterval);
+    syncInterval = setInterval(syncWithServer, 30000);
+    
     checkForUpdates();
-    navigateTo('dashboard');
+    syncWithServer().then(() => {
+      navigateTo('dashboard');
+    });
   }
 
   function logout() {
+    if (syncInterval) clearInterval(syncInterval);
     currentUser = null;
     document.getElementById('appScreen').classList.add('hidden');
     document.getElementById('loginScreen').classList.remove('hidden');
@@ -322,7 +421,7 @@
     e.preventDefault();
     const username = document.getElementById('resetUsername').value.trim();
     const email = document.getElementById('resetEmail').value.trim();
-    const data = loadData();
+    const data = loadLocalData();
     const user = data.users.find(u => u.username === username && u.email === email);
     if (!user) {
       document.getElementById('resetStatus').innerHTML = '<span style="color:#e74c3c;">User not found or email mismatch.</span>';
@@ -352,14 +451,14 @@
       document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#e74c3c;">Invalid reset code.</span>';
       return;
     }
-    const data = loadData();
+    const data = loadLocalData();
     const user = data.users.find(u => u.username === foundUser);
     if (!user) {
       document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#e74c3c;">User not found.</span>';
       return;
     }
     user.password = newPass;
-    saveData(data);
+    saveLocalData(data);
     addAuditLog('Password Reset', foundUser, 'Password changed via reset.');
     delete resetCodes[foundUser];
     document.getElementById('resetApplyStatus').innerHTML = '<span style="color:#27ae60;">✅ Password updated! You can now login.</span>';
@@ -419,7 +518,7 @@
       return;
     }
 
-    const data = loadData();
+    const data = loadLocalData();
     const user = data.users.find(u => u.username === currentUser.username);
     if (!user) {
       document.getElementById('changePassStatus').innerHTML = '<span style="color:#e74c3c;">User not found.</span>';
@@ -431,7 +530,7 @@
     }
 
     user.password = newPass;
-    saveData(data);
+    saveLocalData(data);
     addAuditLog('Password Changed', currentUser.username, 'Password changed by user.');
     document.getElementById('changePassStatus').innerHTML = '<span style="color:#27ae60;">✅ Password updated successfully!</span>';
     setTimeout(() => {
@@ -489,7 +588,7 @@
       return;
     }
 
-    const data = loadData();
+    const data = loadLocalData();
     const user = data.users.find(u => u.username === username);
     if (!user) {
       document.getElementById('resetUserStatus').innerHTML = '<span style="color:#e74c3c;">User not found.</span>';
@@ -497,7 +596,7 @@
     }
 
     user.password = newPass;
-    saveData(data);
+    saveLocalData(data);
     addAuditLog('Password Reset (Admin)', currentUser.username, 'Admin reset password for ' + username);
     document.getElementById('resetUserStatus').innerHTML = '<span style="color:#27ae60;">✅ Password reset successfully!</span>';
     setTimeout(() => {
@@ -513,17 +612,17 @@
   }
 
   // ============================================================
-  // AUDIT LOG
+  // AUDIT LOG (local only - for demo)
   // ============================================================
   function addAuditLog(action, username, details) {
-    const data = loadData();
+    const data = loadLocalData();
     data.auditLog.push({
       timestamp: new Date().toISOString(),
       username: username || (currentUser ? currentUser.username : 'system'),
       action: action,
       details: details || ''
     });
-    saveData(data);
+    saveLocalData(data);
   }
 
   // ============================================================
@@ -533,36 +632,39 @@
     const now = new Date();
     return data.clients.map(client => {
       const totalPaid = data.payments
-        .filter(p => p.clientId === client.id)
-        .reduce((sum, p) => sum + Number(p.amount), 0);
+        .filter(p => p.ClientID == client.ID)
+        .reduce((sum, p) => sum + Number(p.Amount), 0);
       let monthsDue = 0;
-      const due = new Date(client.dueDate);
+      const due = new Date(client.DueDate);
       while (due <= now) {
         monthsDue++;
         due.setMonth(due.getMonth() + 1);
       }
-      const totalDue = monthsDue * Number(client.amount);
+      const totalDue = monthsDue * Number(client.Amount);
       const balance = Math.max(0, totalDue - totalPaid);
       return { ...client, balance, totalPaid, totalDue };
     });
   }
 
   function getClientHistory(clientId) {
-    const data = loadData();
-    const payments = data.payments.filter(p => p.clientId === clientId);
-    const client = data.clients.find(c => c.id === clientId);
+    const data = loadLocalData();
+    const payments = data.payments.filter(p => p.ClientID == clientId);
+    const client = data.clients.find(c => c.ID == clientId);
     const history = [];
     payments.forEach(p => {
-      history.push({ date: p.date, type: 'Payment', amount: p.amount, details: p.period || '' });
+      history.push({ date: p.Date, type: 'Payment', amount: p.Amount, details: p.Period || '' });
     });
-    if (client && client.statusLog) {
-      client.statusLog.forEach(log => {
-        history.push({ date: log.date, type: log.action, details: log.note || '' });
-      });
+    if (client && client.StatusLog) {
+      try {
+        const logs = JSON.parse(client.StatusLog);
+        logs.forEach(log => {
+          history.push({ date: log.date, type: log.action, details: log.note || '' });
+        });
+      } catch(e) {}
     }
-    const tickets = data.tickets.filter(t => t.clientId === clientId);
+    const tickets = data.tickets.filter(t => t.ClientID == clientId);
     tickets.forEach(t => {
-      history.push({ date: t.createdAt, type: 'Ticket', details: t.subject + ' - ' + t.status });
+      history.push({ date: t.CreatedAt, type: 'Ticket', details: t.Subject + ' - ' + t.Status });
     });
     history.sort((a, b) => new Date(b.date) - new Date(a.date));
     return history;
@@ -582,7 +684,7 @@
 
   function renderPage(page) {
     const container = document.getElementById('appContainer');
-    const data = loadData();
+    const data = loadLocalData();
     const clientsWithBalance = getClientsWithBalance(data);
 
     switch(page) {
@@ -600,17 +702,17 @@
   // ----- DASHBOARD -----
   function renderDashboard(container, data, clientsWithBalance) {
     const totalClients = data.clients.length;
-    const activeClients = data.clients.filter(c => c.status === 'Active').length;
-    const totalCollectible = data.clients.filter(c => c.status === 'Active').reduce((sum, c) => sum + Number(c.amount), 0);
-    const totalCollected = data.payments.reduce((sum, p) => sum + Number(p.amount), 0);
-    const totalBalance = clientsWithBalance.filter(c => c.status === 'Active').reduce((sum, c) => sum + c.balance, 0);
-    const paidCount = clientsWithBalance.filter(c => c.status === 'Active' && c.balance === 0).length;
-    const unpaidCount = clientsWithBalance.filter(c => c.status === 'Active' && c.balance > 0).length;
+    const activeClients = data.clients.filter(c => c.Status === 'Active').length;
+    const totalCollectible = data.clients.filter(c => c.Status === 'Active').reduce((sum, c) => sum + Number(c.Amount), 0);
+    const totalCollected = data.payments.reduce((sum, p) => sum + Number(p.Amount), 0);
+    const totalBalance = clientsWithBalance.filter(c => c.Status === 'Active').reduce((sum, c) => sum + c.balance, 0);
+    const paidCount = clientsWithBalance.filter(c => c.Status === 'Active' && c.balance === 0).length;
+    const unpaidCount = clientsWithBalance.filter(c => c.Status === 'Active' && c.balance > 0).length;
     const percentage = totalCollectible > 0 ? ((totalCollected / totalCollectible) * 100) : 0;
 
-    const dueAccounts = clientsWithBalance.filter(c => c.status === 'Active' && c.balance > 0);
-    const openTickets = data.tickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
-    const recentTickets = [...data.tickets].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0,5);
+    const dueAccounts = clientsWithBalance.filter(c => c.Status === 'Active' && c.balance > 0);
+    const openTickets = data.tickets.filter(t => t.Status !== 'Closed' && t.Status !== 'Resolved');
+    const recentTickets = [...data.tickets].sort((a,b) => new Date(b.CreatedAt) - new Date(a.CreatedAt)).slice(0,5);
 
     let html = `
       <div class="card">
@@ -636,7 +738,7 @@
             <table>
               <thead><tr><th>Acct #</th><th>Name</th><th>Balance</th></tr></thead>
               <tbody>
-                ${dueAccounts.map(c => `<tr><td>${c.id}</td><td>${c.name}</td><td class="badge badge-danger">₱${c.balance.toFixed(2)}</td></tr>`).join('')}
+                ${dueAccounts.map(c => `<tr><td>${c.ID}</td><td>${c.Name}</td><td class="badge badge-danger">₱${c.balance.toFixed(2)}</td></tr>`).join('')}
               </tbody>
             </table>
           </div>
@@ -648,9 +750,9 @@
               <thead><tr><th>ID</th><th>Client</th><th>Subject</th><th>Status</th></tr></thead>
               <tbody>
                 ${recentTickets.map(t => {
-                  const client = data.clients.find(c => c.id === t.clientId);
-                  const statusClass = t.status === 'Open' ? 'badge-danger' : t.status === 'In Progress' ? 'badge-warning' : t.status === 'Resolved' ? 'badge-info' : 'badge-success';
-                  return `<tr><td>#${t.id}</td><td>${client ? client.name : 'Unknown'}</td><td>${t.subject}</td><td><span class="badge ${statusClass}">${t.status}</span></td></tr>`;
+                  const client = data.clients.find(c => c.ID == t.ClientID);
+                  const statusClass = t.Status === 'Open' ? 'badge-danger' : t.Status === 'In Progress' ? 'badge-warning' : t.Status === 'Resolved' ? 'badge-info' : 'badge-success';
+                  return `<tr><td>#${t.ID}</td><td>${client ? client.Name : 'Unknown'}</td><td>${t.Subject}</td><td><span class="badge ${statusClass}">${t.Status}</span></td></tr>`;
                 }).join('')}
               </tbody>
             </table>
@@ -709,9 +811,9 @@
     if (filterText) {
       const f = filterText.toLowerCase();
       filtered = filtered.filter(c =>
-        c.id.toString().includes(f) ||
-        c.name.toLowerCase().includes(f) ||
-        (c.contact && c.contact.includes(f))
+        c.ID.toString().includes(f) ||
+        (c.Name && c.Name.toLowerCase().includes(f)) ||
+        (c.Contact && c.Contact.includes(f))
       );
     }
     let rows = '';
@@ -719,24 +821,24 @@
       rows = `<tr><td colspan="9" class="text-center">No clients found.</td></tr>`;
     } else {
       filtered.forEach(client => {
-        const balance = clientsWithBalance.find(c => c.id === client.id)?.balance || 0;
-        const statusBadge = client.status === 'Active' ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>';
+        const balance = clientsWithBalance.find(c => c.ID == client.ID)?.balance || 0;
+        const statusBadge = client.Status === 'Active' ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>';
         rows += `
           <tr>
-            <td>${client.id}</td>
-            <td>${client.name}</td>
-            <td>${client.contact || 'N/A'}</td>
-            <td>${client.plan}</td>
-            <td>₱${Number(client.amount).toFixed(2)}</td>
-            <td>${client.dueDate}</td>
+            <td>${client.ID}</td>
+            <td>${client.Name || ''}</td>
+            <td>${client.Contact || 'N/A'}</td>
+            <td>${client.Plan || ''}</td>
+            <td>₱${Number(client.Amount).toFixed(2)}</td>
+            <td>${client.DueDate || ''}</td>
             <td>${statusBadge}</td>
             <td>
-              <button class="btn btn-warning btn-sm" onclick="editClient(${client.id})"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-info btn-sm" onclick="viewHistory(${client.id})"><i class="fas fa-history"></i></button>
-              <button class="btn btn-primary btn-sm" onclick="showCreateTicket(${client.id})"><i class="fas fa-ticket-alt"></i></button>
-              ${client.status === 'Active' ? `<button class="btn btn-danger btn-sm" onclick="disconnectClient(${client.id})"><i class="fas fa-power-off"></i></button>` :
-                `<button class="btn btn-success btn-sm" onclick="reconnectClient(${client.id})"><i class="fas fa-plug"></i></button>`}
-              <button class="btn btn-danger btn-sm" onclick="deleteClient(${client.id})"><i class="fas fa-trash"></i></button>
+              <button class="btn btn-warning btn-sm" onclick="editClient(${client.ID})"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-info btn-sm" onclick="viewHistory(${client.ID})"><i class="fas fa-history"></i></button>
+              <button class="btn btn-primary btn-sm" onclick="showCreateTicket(${client.ID})"><i class="fas fa-ticket-alt"></i></button>
+              ${client.Status === 'Active' ? `<button class="btn btn-danger btn-sm" onclick="disconnectClient(${client.ID})"><i class="fas fa-power-off"></i></button>` :
+                `<button class="btn btn-success btn-sm" onclick="reconnectClient(${client.ID})"><i class="fas fa-plug"></i></button>`}
+              <button class="btn btn-danger btn-sm" onclick="deleteClient(${client.ID})"><i class="fas fa-trash"></i></button>
             </td>
           </tr>
         `;
@@ -754,7 +856,7 @@
 
   function filterClients() {
     const input = document.getElementById('searchInput');
-    const data = loadData();
+    const data = loadLocalData();
     const clientsWithBalance = getClientsWithBalance(data);
     const tableContainer = document.getElementById('clientTableContainer');
     if (tableContainer) {
@@ -764,7 +866,7 @@
 
   // ----- CLIENT ADD/EDIT -----
   function showAddClientForm() {
-    const data = loadData();
+    const data = loadLocalData();
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -815,9 +917,9 @@
     }
   }
 
-  function addClient(e) {
+  async function addClient(e) {
     e.preventDefault();
-    const data = loadData();
+    const data = loadLocalData();
     const name = document.getElementById('cName').value.trim();
     if (!name) return alert('Name is required.');
     const amount = parseFloat(document.getElementById('cAmount').value);
@@ -842,35 +944,48 @@
       status: 'Active',
       statusLog: []
     };
-    data.clients.push(newClient);
-    saveData(data);
-    addAuditLog('Client Added', currentUser.username, 'Added client #' + newClient.id + ': ' + newClient.name);
-    closeModal(document.querySelector('.modal-overlay .modal-close'));
-    navigateTo('clients');
+    
+    // Save to server
+    try {
+      const result = await callAPI('addClient', newClient);
+      if (result.success) {
+        // Update local cache
+        data.clients.push(newClient);
+        saveLocalData(data);
+        addAuditLog('Client Added', currentUser.username, 'Added client #' + newClient.id + ': ' + newClient.name);
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('clients');
+      } else {
+        alert('Error adding client: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
   }
 
   function editClient(id) {
-    const data = loadData();
-    const client = data.clients.find(c => c.id === id);
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
     if (!client) return;
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-box">
         <span class="modal-close" onclick="closeModal(this)">&times;</span>
-        <h3>Edit Client #${client.id}</h3>
-        <form id="editClientForm" onsubmit="updateClient(event, ${client.id})">
-          <div class="form-group"><label>Name *</label><input type="text" id="eName" value="${client.name}" required></div>
-          <div class="form-group"><label>Contact #</label><input type="text" id="eContact" value="${client.contact || ''}"></div>
-          <div class="form-group"><label>Address</label><input type="text" id="eAddress" value="${client.address || ''}"></div>
+        <h3>Edit Client #${client.ID}</h3>
+        <form id="editClientForm" onsubmit="updateClient(event, ${client.ID})">
+          <div class="form-group"><label>Name *</label><input type="text" id="eName" value="${client.Name || ''}" required></div>
+          <div class="form-group"><label>Contact #</label><input type="text" id="eContact" value="${client.Contact || ''}"></div>
+          <div class="form-group"><label>Address</label><input type="text" id="eAddress" value="${client.Address || ''}"></div>
           <div class="form-group">
             <label>Plan</label>
             <select id="ePlan" onchange="autoFillPrice('ePlan','eAmount')"></select>
           </div>
-          <div class="form-group"><label>Monthly Amount</label><input type="number" id="eAmount" step="0.01" value="${client.amount}" required></div>
-          <div class="form-group"><label>Installation Date</label><input type="date" id="eInstallDate" value="${client.installDate}"></div>
-          <div class="form-group"><label>Account Name</label><input type="text" id="eAccount" value="${client.accountName || ''}"></div>
-          <div class="form-group"><label>Napbox</label><input type="text" id="eNapbox" value="${client.napbox || ''}"></div>
+          <div class="form-group"><label>Monthly Amount</label><input type="number" id="eAmount" step="0.01" value="${client.Amount || 0}" required></div>
+          <div class="form-group"><label>Installation Date</label><input type="date" id="eInstallDate" value="${client.InstallDate || ''}"></div>
+          <div class="form-group"><label>Account Name</label><input type="text" id="eAccount" value="${client.AccountName || ''}"></div>
+          <div class="form-group"><label>Napbox</label><input type="text" id="eNapbox" value="${client.Napbox || ''}"></div>
           <div class="form-group">
             <label>Agent</label>
             <select id="eAgent"></select>
@@ -884,96 +999,155 @@
       </div>
     `;
     document.getElementById('modalContainer').appendChild(modal);
-    populatePlanSelect('ePlan', data);
-    populateAgentSelect('eAgent', data);
-    document.getElementById('ePlan').value = client.plan;
-    document.getElementById('eAgent').value = client.agent;
-    document.getElementById('eStatus').value = client.status;
+    const data2 = loadLocalData();
+    populatePlanSelect('ePlan', data2);
+    populateAgentSelect('eAgent', data2);
+    document.getElementById('ePlan').value = client.Plan || '';
+    document.getElementById('eAgent').value = client.Agent || '';
+    document.getElementById('eStatus').value = client.Status || 'Active';
   }
 
-  function updateClient(e, id) {
+  async function updateClient(e, id) {
     e.preventDefault();
-    const data = loadData();
-    const client = data.clients.find(c => c.id === id);
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
     if (!client) return;
     const name = document.getElementById('eName').value.trim();
     if (!name) return alert('Name required.');
     const amount = parseFloat(document.getElementById('eAmount').value);
     if (isNaN(amount) || amount <= 0) return alert('Valid amount required.');
-    const installDate = document.getElementById('eInstallDate').value || client.installDate;
-    let dueDate = client.dueDate;
-    if (installDate !== client.installDate) {
+    const installDate = document.getElementById('eInstallDate').value || client.InstallDate;
+    let dueDate = client.DueDate;
+    if (installDate !== client.InstallDate) {
       const due = new Date(installDate);
       due.setMonth(due.getMonth() + 1);
       dueDate = due.toISOString().split('T')[0];
     }
-    const oldStatus = client.status;
+    const oldStatus = client.Status;
     const newStatus = document.getElementById('eStatus').value;
-    client.name = name;
-    client.contact = document.getElementById('eContact').value.trim() || '';
-    client.address = document.getElementById('eAddress').value || '';
-    client.plan = document.getElementById('ePlan').value;
-    client.amount = amount;
-    client.installDate = installDate;
-    client.dueDate = dueDate;
-    client.accountName = document.getElementById('eAccount').value || '';
-    client.napbox = document.getElementById('eNapbox').value || '';
-    client.agent = document.getElementById('eAgent').value;
-    client.status = newStatus;
-    if (oldStatus !== newStatus) {
-      if (!client.statusLog) client.statusLog = [];
-      client.statusLog.push({
-        date: new Date().toISOString().split('T')[0],
-        action: newStatus === 'Active' ? 'Reconnected' : 'Disconnected',
-        note: 'Status changed from ' + oldStatus + ' to ' + newStatus
-      });
+    
+    const updatedClient = {
+      id: client.ID,
+      name: name,
+      contact: document.getElementById('eContact').value.trim() || '',
+      address: document.getElementById('eAddress').value || '',
+      plan: document.getElementById('ePlan').value,
+      amount: amount,
+      installDate: installDate,
+      dueDate: dueDate,
+      accountName: document.getElementById('eAccount').value || '',
+      napbox: document.getElementById('eNapbox').value || '',
+      agent: document.getElementById('eAgent').value,
+      status: newStatus,
+      statusLog: client.StatusLog || ''
+    };
+
+    try {
+      const result = await callAPI('updateClient', updatedClient);
+      if (result.success) {
+        // Update local cache
+        Object.assign(client, updatedClient);
+        if (oldStatus !== newStatus) {
+          let logs = [];
+          try { logs = JSON.parse(client.StatusLog || '[]'); } catch(e) {}
+          logs.push({ date: new Date().toISOString().split('T')[0], action: newStatus === 'Active' ? 'Reconnected' : 'Disconnected', note: 'Status changed from ' + oldStatus + ' to ' + newStatus });
+          client.StatusLog = JSON.stringify(logs);
+        }
+        saveLocalData(data);
+        addAuditLog('Client Updated', currentUser.username, 'Client #' + id + ' updated.');
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('clients');
+      } else {
+        alert('Error updating client: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
     }
-    saveData(data);
-    addAuditLog('Client Updated', currentUser.username, 'Client #' + id + ' updated.');
-    closeModal(document.querySelector('.modal-overlay .modal-close'));
-    navigateTo('clients');
   }
 
-  function deleteClient(id) {
+  async function deleteClient(id) {
     if (!confirm('Permanently delete this client?')) return;
-    const data = loadData();
-    const client = data.clients.find(c => c.id === id);
-    if (!client) return;
-    data.clients = data.clients.filter(c => c.id !== id);
-    saveData(data);
-    addAuditLog('Client Deleted', currentUser.username, 'Deleted client #' + id + ': ' + client.name);
-    navigateTo('clients');
+    try {
+      const result = await callAPI('deleteClient', { id: id });
+      if (result.success) {
+        const data = loadLocalData();
+        data.clients = data.clients.filter(c => c.ID != id);
+        saveLocalData(data);
+        addAuditLog('Client Deleted', currentUser.username, 'Deleted client #' + id);
+        await syncWithServer();
+        navigateTo('clients');
+      } else {
+        alert('Error deleting client: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
   }
 
   function disconnectClient(id) {
     if (!confirm('Disconnect this client?')) return;
-    const data = loadData();
-    const client = data.clients.find(c => c.id === id);
-    if (!client || client.status !== 'Active') return alert('Client is not active.');
-    client.status = 'Inactive';
-    if (!client.statusLog) client.statusLog = [];
-    client.statusLog.push({ date: new Date().toISOString().split('T')[0], action: 'Disconnected', note: 'Manually disconnected' });
-    saveData(data);
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
+    if (!client || client.Status !== 'Active') return alert('Client is not active.');
+    client.Status = 'Inactive';
+    let logs = [];
+    try { logs = JSON.parse(client.StatusLog || '[]'); } catch(e) {}
+    logs.push({ date: new Date().toISOString().split('T')[0], action: 'Disconnected', note: 'Manually disconnected' });
+    client.StatusLog = JSON.stringify(logs);
+    saveLocalData(data);
     addAuditLog('Client Disconnected', currentUser.username, 'Client #' + id + ' disconnected.');
+    callAPI('updateClient', {
+      id: client.ID,
+      name: client.Name,
+      contact: client.Contact || '',
+      address: client.Address || '',
+      plan: client.Plan || '',
+      amount: client.Amount || 0,
+      installDate: client.InstallDate || '',
+      dueDate: client.DueDate || '',
+      accountName: client.AccountName || '',
+      napbox: client.Napbox || '',
+      agent: client.Agent || '',
+      status: client.Status,
+      statusLog: client.StatusLog || ''
+    }).then(() => syncWithServer());
     navigateTo('clients');
   }
 
   function reconnectClient(id) {
     if (!confirm('Reconnect this client?')) return;
-    const data = loadData();
-    const client = data.clients.find(c => c.id === id);
-    if (!client || client.status !== 'Inactive') return alert('Client is not inactive.');
-    client.status = 'Active';
-    if (!client.statusLog) client.statusLog = [];
-    client.statusLog.push({ date: new Date().toISOString().split('T')[0], action: 'Reconnected', note: 'Manually reconnected' });
-    saveData(data);
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
+    if (!client || client.Status !== 'Inactive') return alert('Client is not inactive.');
+    client.Status = 'Active';
+    let logs = [];
+    try { logs = JSON.parse(client.StatusLog || '[]'); } catch(e) {}
+    logs.push({ date: new Date().toISOString().split('T')[0], action: 'Reconnected', note: 'Manually reconnected' });
+    client.StatusLog = JSON.stringify(logs);
+    saveLocalData(data);
     addAuditLog('Client Reconnected', currentUser.username, 'Client #' + id + ' reconnected.');
+    callAPI('updateClient', {
+      id: client.ID,
+      name: client.Name,
+      contact: client.Contact || '',
+      address: client.Address || '',
+      plan: client.Plan || '',
+      amount: client.Amount || 0,
+      installDate: client.InstallDate || '',
+      dueDate: client.DueDate || '',
+      accountName: client.AccountName || '',
+      napbox: client.Napbox || '',
+      agent: client.Agent || '',
+      status: client.Status,
+      statusLog: client.StatusLog || ''
+    }).then(() => syncWithServer());
     navigateTo('clients');
   }
 
   function viewHistory(id) {
-    const data = loadData();
-    const client = data.clients.find(c => c.id === id);
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == id);
     if (!client) return;
     const history = getClientHistory(id);
     const modal = document.createElement('div');
@@ -981,7 +1155,7 @@
     modal.innerHTML = `
       <div class="modal-box" style="max-width:700px;">
         <span class="modal-close" onclick="closeModal(this)">&times;</span>
-        <h3>History for #${client.id} - ${client.name}</h3>
+        <h3>History for #${client.ID} - ${client.Name}</h3>
         <div class="table-responsive">
           <table>
             <thead><tr><th>Date</th><th>Type</th><th>Details</th></tr></thead>
@@ -999,15 +1173,15 @@
 
   // ----- TICKETS -----
   function showCreateTicket(clientId) {
-    const data = loadData();
-    const client = data.clients.find(c => c.id === clientId);
+    const data = loadLocalData();
+    const client = data.clients.find(c => c.ID == clientId);
     if (!client) return;
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-box">
         <span class="modal-close" onclick="closeModal(this)">&times;</span>
-        <h3>Create Ticket for ${client.name} (Acct #${client.id})</h3>
+        <h3>Create Ticket for ${client.Name} (Acct #${client.ID})</h3>
         <form id="ticketForm" onsubmit="createTicket(event, ${clientId})">
           <div class="form-group"><label>Subject *</label><input type="text" id="tSubject" required placeholder="e.g., Internet down"></div>
           <div class="form-group"><label>Description</label><textarea id="tDescription" rows="3"></textarea></div>
@@ -1022,14 +1196,14 @@
     document.getElementById('modalContainer').appendChild(modal);
   }
 
-  function createTicket(e, clientId) {
+  async function createTicket(e, clientId) {
     e.preventDefault();
-    const data = loadData();
+    const data = loadLocalData();
     const subject = document.getElementById('tSubject').value.trim();
     if (!subject) return alert('Subject required.');
     const description = document.getElementById('tDescription').value.trim();
     const priority = document.getElementById('tPriority').value;
-    const ticket = {
+    const newTicket = {
       id: data.nextTicketId++,
       clientId: clientId,
       subject: subject,
@@ -1039,11 +1213,22 @@
       createdAt: new Date().toISOString().split('T')[0],
       updates: []
     };
-    data.tickets.push(ticket);
-    saveData(data);
-    addAuditLog('Ticket Created', currentUser.username, 'Ticket #' + ticket.id + ' for client #' + clientId + ': ' + subject);
-    closeModal(document.querySelector('.modal-overlay .modal-close'));
-    navigateTo('tickets');
+    
+    try {
+      const result = await callAPI('addTicket', newTicket);
+      if (result.success) {
+        data.tickets.push(newTicket);
+        saveLocalData(data);
+        addAuditLog('Ticket Created', currentUser.username, 'Ticket #' + newTicket.id + ' for client #' + clientId + ': ' + subject);
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('tickets');
+      } else {
+        alert('Error creating ticket: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
   }
 
   function renderTickets(container, data, clientsWithBalance) {
@@ -1059,19 +1244,19 @@
             <tbody>
               ${data.tickets.length === 0 ? '<tr><td colspan="7" class="text-center">No tickets.</td></tr>' :
                 [...data.tickets].reverse().map(t => {
-                  const client = data.clients.find(c => c.id === t.clientId);
-                  const statusClass = t.status === 'Open' ? 'badge-danger' : t.status === 'In Progress' ? 'badge-warning' : t.status === 'Resolved' ? 'badge-info' : 'badge-success';
-                  const priorityClass = t.priority === 'Critical' ? 'badge-danger' : t.priority === 'High' ? 'badge-warning' : 'badge-info';
+                  const client = data.clients.find(c => c.ID == t.ClientID);
+                  const statusClass = t.Status === 'Open' ? 'badge-danger' : t.Status === 'In Progress' ? 'badge-warning' : t.Status === 'Resolved' ? 'badge-info' : 'badge-success';
+                  const priorityClass = t.Priority === 'Critical' ? 'badge-danger' : t.Priority === 'High' ? 'badge-warning' : 'badge-info';
                   return `<tr>
-                    <td>#${t.id}</td>
-                    <td>${client ? client.name : 'Unknown'}</td>
-                    <td>${t.subject}</td>
-                    <td><span class="badge ${priorityClass}">${t.priority}</span></td>
-                    <td><span class="badge ${statusClass}">${t.status}</span></td>
-                    <td>${t.createdAt}</td>
+                    <td>#${t.ID}</td>
+                    <td>${client ? client.Name : 'Unknown'}</td>
+                    <td>${t.Subject}</td>
+                    <td><span class="badge ${priorityClass}">${t.Priority}</span></td>
+                    <td><span class="badge ${statusClass}">${t.Status}</span></td>
+                    <td>${t.CreatedAt}</td>
                     <td>
-                      <button class="btn btn-info btn-sm" onclick="viewTicket(${t.id})"><i class="fas fa-eye"></i></button>
-                      <button class="btn btn-warning btn-sm" onclick="updateTicketStatus(${t.id})"><i class="fas fa-edit"></i></button>
+                      <button class="btn btn-info btn-sm" onclick="viewTicket(${t.ID})"><i class="fas fa-eye"></i></button>
+                      <button class="btn btn-warning btn-sm" onclick="updateTicketStatus(${t.ID})"><i class="fas fa-edit"></i></button>
                     </td>
                   </tr>`;
                 }).join('')
@@ -1085,7 +1270,7 @@
   }
 
   function showCreateTicketAny() {
-    const data = loadData();
+    const data = loadLocalData();
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -1097,7 +1282,7 @@
             <label>Client</label>
             <select id="tClientAny" required>
               <option value="">-- Select --</option>
-              ${data.clients.map(c => `<option value="${c.id}">${c.id} - ${c.name}</option>`).join('')}
+              ${data.clients.map(c => `<option value="${c.ID}">${c.ID} - ${c.Name}</option>`).join('')}
             </select>
           </div>
           <div class="form-group"><label>Subject *</label><input type="text" id="tSubjectAny" required></div>
@@ -1110,16 +1295,16 @@
     document.getElementById('modalContainer').appendChild(modal);
   }
 
-  function createTicketAny(e) {
+  async function createTicketAny(e) {
     e.preventDefault();
-    const data = loadData();
+    const data = loadLocalData();
     const clientId = parseInt(document.getElementById('tClientAny').value);
     if (!clientId) return alert('Select client.');
     const subject = document.getElementById('tSubjectAny').value.trim();
     if (!subject) return alert('Subject required.');
     const description = document.getElementById('tDescAny').value.trim();
     const priority = document.getElementById('tPriorityAny').value;
-    const ticket = {
+    const newTicket = {
       id: data.nextTicketId++,
       clientId: clientId,
       subject: subject,
@@ -1129,32 +1314,49 @@
       createdAt: new Date().toISOString().split('T')[0],
       updates: []
     };
-    data.tickets.push(ticket);
-    saveData(data);
-    addAuditLog('Ticket Created', currentUser.username, 'Ticket #' + ticket.id + ' for client #' + clientId + ': ' + subject);
-    closeModal(document.querySelector('.modal-overlay .modal-close'));
-    navigateTo('tickets');
+    
+    try {
+      const result = await callAPI('addTicket', newTicket);
+      if (result.success) {
+        data.tickets.push(newTicket);
+        saveLocalData(data);
+        addAuditLog('Ticket Created', currentUser.username, 'Ticket #' + newTicket.id + ' for client #' + clientId + ': ' + subject);
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('tickets');
+      } else {
+        alert('Error creating ticket: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
   }
 
   function viewTicket(id) {
-    const data = loadData();
-    const ticket = data.tickets.find(t => t.id === id);
+    const data = loadLocalData();
+    const ticket = data.tickets.find(t => t.ID == id);
     if (!ticket) return;
-    const client = data.clients.find(c => c.id === ticket.clientId);
+    const client = data.clients.find(c => c.ID == ticket.ClientID);
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    let updatesHtml = ticket.updates && ticket.updates.length > 0 ?
-      ticket.updates.map(u => `<div class="update-log"><strong>${u.date}</strong> - ${u.status}: ${u.note}</div>`).join('') :
-      '<p>No updates yet.</p>';
+    let updatesHtml = '';
+    try {
+      const updates = JSON.parse(ticket.Updates || '[]');
+      updatesHtml = updates.length > 0 ?
+        updates.map(u => `<div class="update-log"><strong>${u.date}</strong> - ${u.status}: ${u.note}</div>`).join('') :
+        '<p>No updates yet.</p>';
+    } catch(e) {
+      updatesHtml = '<p>No updates yet.</p>';
+    }
     modal.innerHTML = `
       <div class="modal-box" style="max-width:700px;">
         <span class="modal-close" onclick="closeModal(this)">&times;</span>
-        <h3>Ticket #${ticket.id} - ${ticket.subject}</h3>
-        <p><strong>Client:</strong> ${client ? client.name : 'Unknown'}</p>
-        <p><strong>Priority:</strong> ${ticket.priority}</p>
-        <p><strong>Status:</strong> ${ticket.status}</p>
-        <p><strong>Created:</strong> ${ticket.createdAt}</p>
-        <p><strong>Description:</strong> ${ticket.description || 'N/A'}</p>
+        <h3>Ticket #${ticket.ID} - ${ticket.Subject}</h3>
+        <p><strong>Client:</strong> ${client ? client.Name : 'Unknown'}</p>
+        <p><strong>Priority:</strong> ${ticket.Priority}</p>
+        <p><strong>Status:</strong> ${ticket.Status}</p>
+        <p><strong>Created:</strong> ${ticket.CreatedAt}</p>
+        <p><strong>Description:</strong> ${ticket.Description || 'N/A'}</p>
         <h4>Progress Updates</h4>
         ${updatesHtml}
         <hr>
@@ -1176,24 +1378,46 @@
     document.getElementById('modalContainer').appendChild(modal);
   }
 
-  function addTicketUpdate(e, id) {
+  async function addTicketUpdate(e, id) {
     e.preventDefault();
-    const data = loadData();
-    const ticket = data.tickets.find(t => t.id === id);
+    const data = loadLocalData();
+    const ticket = data.tickets.find(t => t.ID == id);
     if (!ticket) return;
     const newStatus = document.getElementById('updateStatus').value;
     const note = document.getElementById('updateNote').value.trim() || 'No details.';
-    if (!ticket.updates) ticket.updates = [];
-    ticket.updates.push({
+    let updates = [];
+    try { updates = JSON.parse(ticket.Updates || '[]'); } catch(e) {}
+    updates.push({
       date: new Date().toISOString().split('T')[0],
       status: newStatus,
       note: note
     });
-    ticket.status = newStatus;
-    saveData(data);
-    addAuditLog('Ticket Updated', currentUser.username, 'Ticket #' + id + ' status changed to ' + newStatus);
-    closeModal(document.querySelector('.modal-overlay .modal-close'));
-    navigateTo('tickets');
+    ticket.Updates = JSON.stringify(updates);
+    ticket.Status = newStatus;
+    
+    try {
+      const result = await callAPI('updateTicket', {
+        id: ticket.ID,
+        clientId: ticket.ClientID,
+        subject: ticket.Subject,
+        description: ticket.Description || '',
+        priority: ticket.Priority,
+        status: ticket.Status,
+        createdAt: ticket.CreatedAt,
+        updates: ticket.Updates
+      });
+      if (result.success) {
+        saveLocalData(data);
+        addAuditLog('Ticket Updated', currentUser.username, 'Ticket #' + id + ' status changed to ' + newStatus);
+        closeModal(document.querySelector('.modal-overlay .modal-close'));
+        await syncWithServer();
+        navigateTo('tickets');
+      } else {
+        alert('Error updating ticket: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
   }
 
   function updateTicketStatus(id) {
@@ -1210,9 +1434,9 @@
             <label>Client</label>
             <select id="payClient" required onchange="updatePayAmount()">
               <option value="">-- Select --</option>
-              ${data.clients.filter(c => c.status === 'Active').map(c => {
-                const bal = clientsWithBalance.find(b => b.id === c.id)?.balance || 0;
-                return `<option value="${c.id}" data-balance="${bal}">${c.id} - ${c.name} (Balance: ₱${bal.toFixed(2)})</option>`;
+              ${data.clients.filter(c => c.Status === 'Active').map(c => {
+                const bal = clientsWithBalance.find(b => b.ID == c.ID)?.balance || 0;
+                return `<option value="${c.ID}" data-balance="${bal}">${c.ID} - ${c.Name} (Balance: ₱${bal.toFixed(2)})</option>`;
               }).join('')}
             </select>
           </div>
@@ -1237,8 +1461,8 @@
             <tbody>
               ${data.payments.length === 0 ? '<tr><td colspan="5" class="text-center">No payments.</td></tr>' :
                 [...data.payments].reverse().map(p => {
-                  const client = data.clients.find(c => c.id === p.clientId);
-                  return `<tr><td>${client ? client.name : 'Unknown'}</td><td>₱${Number(p.amount).toFixed(2)}</td><td>${p.date}</td><td>${p.period || 'N/A'}</td><td>${p.orNumber || 'N/A'}</td></tr>`;
+                  const client = data.clients.find(c => c.ID == p.ClientID);
+                  return `<tr><td>${client ? client.Name : 'Unknown'}</td><td>₱${Number(p.Amount).toFixed(2)}</td><td>${p.Date}</td><td>${p.Period || 'N/A'}</td><td>${p.ORNumber || 'N/A'}</td></tr>`;
                 }).join('')
               }
             </tbody>
@@ -1270,9 +1494,9 @@
     }
   }
 
-  function recordPayment(e) {
+  async function recordPayment(e) {
     e.preventDefault();
-    const data = loadData();
+    const data = loadLocalData();
     const clientId = parseInt(document.getElementById('payClient').value);
     if (!clientId) return alert('Select a client.');
     const amount = parseFloat(document.getElementById('payAmount').value);
@@ -1283,14 +1507,39 @@
     const orNumber = document.getElementById('payOR').value.trim() || '';
     const method = document.getElementById('payMethod').value;
 
-    const payment = { clientId, amount, date, period, orNumber, method };
-    data.payments.push(payment);
-    saveData(data);
-    addAuditLog('Payment Recorded', currentUser.username, 'Payment of ₱' + amount + ' for client #' + clientId);
-    document.getElementById('paymentForm').reset();
-    document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
-    alert('Payment saved.');
-    navigateTo('payments');
+    const payment = {
+      clientId: clientId,
+      amount: amount,
+      date: date,
+      period: period,
+      orNumber: orNumber,
+      method: method
+    };
+    
+    try {
+      const result = await callAPI('addPayment', payment);
+      if (result.success) {
+        data.payments.push({
+          ClientID: clientId,
+          Amount: amount,
+          Date: date,
+          Period: period,
+          ORNumber: orNumber,
+          Method: method
+        });
+        saveLocalData(data);
+        addAuditLog('Payment Recorded', currentUser.username, 'Payment of ₱' + amount + ' for client #' + clientId);
+        document.getElementById('paymentForm').reset();
+        document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+        alert('Payment saved.');
+        await syncWithServer();
+        navigateTo('payments');
+      } else {
+        alert('Error recording payment: ' + (result.error || 'Unknown error'));
+      }
+    } catch(error) {
+      alert('Error: ' + error.message);
+    }
   }
 
   // ----- BALANCES -----
@@ -1310,7 +1559,7 @@
               ${clientsWithBalance.length === 0 ? '<tr><td colspan="5" class="text-center">No active clients.</td></tr>' :
                 clientsWithBalance.map(c => {
                   const balClass = c.balance > 0 ? 'badge-danger' : 'badge-success';
-                  return `<tr><td>${c.id}</td><td>${c.name}</td><td>${c.plan}</td><td>₱${Number(c.amount).toFixed(2)}</td><td><span class="badge ${balClass}">₱${c.balance.toFixed(2)}</span></td></tr>`;
+                  return `<tr><td>${c.ID}</td><td>${c.Name}</td><td>${c.Plan}</td><td>₱${Number(c.Amount).toFixed(2)}</td><td><span class="badge ${balClass}">₱${c.balance.toFixed(2)}</span></td></tr>`;
                 }).join('')
               }
             </tbody>
@@ -1372,21 +1621,21 @@
     const price = parseFloat(document.getElementById('newPlanPrice').value);
     if (!name) return alert('Enter plan name.');
     if (isNaN(price) || price <= 0) return alert('Enter valid price.');
-    const data = loadData();
+    const data = loadLocalData();
     if (data.config.plans.find(p => p.name === name)) return alert('Plan already exists.');
     data.config.plans.push({ name, price });
-    saveData(data);
+    saveLocalData(data);
     addAuditLog('Plan Added', currentUser.username, 'Added plan ' + name + ' with price ' + price);
     navigateTo('settings');
   }
 
   function removePlan(idx) {
-    const data = loadData();
+    const data = loadLocalData();
     const plan = data.config.plans[idx];
     if (!plan) return;
     if (!confirm('Remove plan "' + plan.name + '"?')) return;
     data.config.plans.splice(idx, 1);
-    saveData(data);
+    saveLocalData(data);
     addAuditLog('Plan Removed', currentUser.username, 'Removed plan ' + plan.name);
     navigateTo('settings');
   }
@@ -1394,19 +1643,19 @@
   function addAgent() {
     const name = document.getElementById('newAgentInput').value.trim();
     if (!name) return alert('Enter agent name.');
-    const data = loadData();
+    const data = loadLocalData();
     if (data.config.agents.includes(name)) return alert('Agent already exists.');
     data.config.agents.push(name);
-    saveData(data);
+    saveLocalData(data);
     addAuditLog('Agent Added', currentUser.username, 'Added agent ' + name);
     navigateTo('settings');
   }
 
   function removeAgent(name) {
     if (!confirm('Remove agent "' + name + '"?')) return;
-    const data = loadData();
+    const data = loadLocalData();
     data.config.agents = data.config.agents.filter(a => a !== name);
-    saveData(data);
+    saveLocalData(data);
     addAuditLog('Agent Removed', currentUser.username, 'Removed agent ' + name);
     navigateTo('settings');
   }
@@ -1472,7 +1721,7 @@
 
   function addUser(e) {
     e.preventDefault();
-    const data = loadData();
+    const data = loadLocalData();
     const username = document.getElementById('uUsername').value.trim();
     if (!username) return alert('Username required.');
     if (data.users.find(u => u.username === username)) {
@@ -1484,7 +1733,7 @@
     const email = document.getElementById('uEmail').value.trim() || '';
     const role = document.getElementById('uRole').value;
     data.users.push({ username, password, email, role });
-    saveData(data);
+    saveLocalData(data);
     addAuditLog('User Added', currentUser.username, 'Added user ' + username + ' (' + role + ')');
     closeModal(document.querySelector('.modal-overlay .modal-close'));
     navigateTo('users');
@@ -1496,9 +1745,9 @@
       return;
     }
     if (!confirm('Delete user "' + username + '"?')) return;
-    const data = loadData();
+    const data = loadLocalData();
     data.users = data.users.filter(u => u.username !== username);
-    saveData(data);
+    saveLocalData(data);
     addAuditLog('User Deleted', currentUser.username, 'Deleted user ' + username);
     navigateTo('users');
   }
@@ -1544,7 +1793,7 @@
   });
 
   // ============================================================
-  // GLOBAL EXPOSURE (for inline onclick)
+  // GLOBAL EXPOSURE
   // ============================================================
   window.showAddClientForm = showAddClientForm;
   window.editClient = editClient;
@@ -1575,7 +1824,7 @@
   window.showResetUserPassword = showResetUserPassword;
   window.resetUserPassword = resetUserPassword;
   window.refreshApp = refreshApp;
-  window.checkForUpdates = checkForUpdates;
+  window.syncWithServer = syncWithServer;
 </script>
 </body>
 </html>
