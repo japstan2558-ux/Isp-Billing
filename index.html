@@ -123,6 +123,18 @@
     .app-header .user-info { font-size: 13px; color: #ecf0f1; margin: 0 12px; }
     .app-header .user-info a { color: #bdc3c7; text-decoration: underline; cursor: pointer; }
     .app-header .user-info a:hover { color: #fff; }
+    .app-header .sync-btn {
+      background: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      margin-left: 8px;
+    }
+    .app-header .sync-btn:hover { opacity: 0.8; }
+    #syncStatus { font-size: 12px; color: #bdc3c7; margin-left: 8px; }
     
     /* ===== REST OF STYLES ===== */
     .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
@@ -272,12 +284,16 @@
         <div class="tagline">CONNECT · STAY CONNECTED · WE DELIVER SOLUTION</div>
       </div>
     </div>
-    <div class="clock" id="clockDisplay">Loading time...</div>
-    <div class="user-info">
-      <span id="currentUserDisplay"></span> |
-      <a href="#" onclick="showChangePassword()">🔑 Change Password</a> |
-      <a href="#" onclick="logout()">🚪 Logout</a>
-      <span style="font-size:12px; color:#27ae60; margin-left:8px;">💾 Local</span>
+    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div class="clock" id="clockDisplay">Loading time...</div>
+      <div class="user-info">
+        <span id="currentUserDisplay"></span> |
+        <a href="#" onclick="showChangePassword()">🔑 Change Password</a> |
+        <a href="#" onclick="logout()">🚪 Logout</a>
+        <span style="font-size:12px; color:#27ae60; margin-left:8px;">💾 Local</span>
+      </div>
+      <button class="sync-btn" onclick="syncToCloud()">☁️ Save to Cloud</button>
+      <span id="syncStatus"></span>
     </div>
   </div>
 
@@ -298,6 +314,12 @@
 <div id="modalContainer"></div>
 
 <script>
+  // ============================================================
+  // CLOUD SYNC CONFIGURATION
+  // ============================================================
+  // ⚠️ PALITAN ITO NG IYONG GOOGLE APPS SCRIPT URL
+  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyrhGjcCO2xWS8_X_JNyOpFpw9yIfVClXMxzEvayEPxwiGZeWazc-j6lcGqXe5InJPV/exec';
+
   // ============================================================
   // DATA LAYER (localStorage)
   // ============================================================
@@ -493,6 +515,70 @@
 
   function saveLocalData(data) {
     localStorage.setItem(DB_KEY, JSON.stringify(data));
+  }
+
+  // ============================================================
+  // CLOUD SYNC FUNCTIONS
+  // ============================================================
+  function setSyncStatus(msg, isError = false) {
+    const el = document.getElementById('syncStatus');
+    if (el) {
+      el.textContent = msg;
+      el.style.color = isError ? '#e74c3c' : '#27ae60';
+    }
+  }
+
+  function syncToCloud() {
+    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+      setSyncStatus('⚠️ Please set GOOGLE_SCRIPT_URL first.', true);
+      return;
+    }
+    const data = loadLocalData();
+    setSyncStatus('⏳ Syncing to cloud...');
+    fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors', // Para sa simpleng deployment, pero mas maganda kung CORS-enabled
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(response => {
+      // Since mode: 'no-cors', di natin mabasa ang response, pero okay na kung nag-send.
+      setSyncStatus('✅ Sync request sent! Check your Google Sheet.');
+      // I-log sa audit locally
+      addAuditLog('Cloud Sync', currentUser ? currentUser.username : 'system', 'Data synced to cloud.');
+    })
+    .catch(err => {
+      setSyncStatus('❌ Sync failed: ' + err.message, true);
+    });
+  }
+
+  function loadFromCloud() {
+    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+      setSyncStatus('⚠️ Please set GOOGLE_SCRIPT_URL first.', true);
+      return;
+    }
+    if (!confirm('Loading from cloud will OVERWRITE your local data. Continue?')) return;
+    setSyncStatus('⏳ Loading from cloud...');
+    fetch(GOOGLE_SCRIPT_URL)
+    .then(response => {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return response.json();
+    })
+    .then(cloudData => {
+      // Validate cloud data
+      if (!cloudData || typeof cloudData !== 'object' || !cloudData.clients) {
+        throw new Error('Invalid data from cloud.');
+      }
+      // Save to localStorage
+      saveLocalData(cloudData);
+      setSyncStatus('✅ Data loaded from cloud successfully!');
+      addAuditLog('Cloud Load', currentUser ? currentUser.username : 'system', 'Data loaded from cloud.');
+      // Refresh current page
+      navigateTo(currentPage || 'dashboard');
+    })
+    .catch(err => {
+      setSyncStatus('❌ Load failed: ' + err.message, true);
+    });
   }
 
   // ============================================================
@@ -1062,7 +1148,7 @@
   }
 
   // ============================================================
-  // COLLECTOR PAGE (unchanged from working version)
+  // COLLECTOR PAGE
   // ============================================================
   function renderCollector(container, data) {
     const isAdmin = currentUser.role === 'admin';
@@ -2697,6 +2783,13 @@
           ${napboxHtml}
         </div>
         <hr>
+        <h3>☁️ Cloud Sync</h3>
+        <div class="flex">
+          <button class="btn btn-success" onclick="syncToCloud()">☁️ Save to Cloud</button>
+          <button class="btn btn-warning" onclick="loadFromCloud()">⬇️ Load from Cloud</button>
+          <span id="syncStatusSettings" style="margin-left:12px;"></span>
+        </div>
+        <hr>
         <h3>📦 Import / Export Data</h3>
         <div class="flex">
           <button class="btn btn-info" onclick="exportData()" title="Export JSON Backup">⬇️ Export JSON</button>
@@ -3307,6 +3400,8 @@
   window.updateGroupFilter = updateGroupFilter;
   window.updateStatusFilter = updateStatusFilter;
   window.updateNapboxOptions = updateNapboxOptions;
+  window.syncToCloud = syncToCloud;
+  window.loadFromCloud = loadFromCloud;
 </script>
 </body>
 </html>
