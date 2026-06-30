@@ -318,7 +318,7 @@
   // CLOUD SYNC CONFIGURATION
   // ============================================================
   // ⚠️ PALITAN ITO NG IYONG GOOGLE APPS SCRIPT URL
-  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyrhGjcCO2xWS8_X_JNyOpFpw9yIfVClXMxzEvayEPxwiGZeWazc-j6lcGqXe5InJPV/exec';
+  const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE';
 
   // ============================================================
   // DATA LAYER (localStorage)
@@ -518,7 +518,7 @@
   }
 
   // ============================================================
-  // CLOUD SYNC FUNCTIONS
+  // CLOUD SYNC FUNCTIONS (FIXED - no no-cors)
   // ============================================================
   function setSyncStatus(msg, isError = false) {
     const el = document.getElementById('syncStatus');
@@ -535,17 +535,23 @@
     }
     const data = loadLocalData();
     setSyncStatus('⏳ Syncing to cloud...');
+    
     fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
-      mode: 'no-cors', // Para sa simpleng deployment, pero mas maganda kung CORS-enabled
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
     .then(response => {
-      // Since mode: 'no-cors', di natin mabasa ang response, pero okay na kung nag-send.
-      setSyncStatus('✅ Sync request sent! Check your Google Sheet.');
-      // I-log sa audit locally
-      addAuditLog('Cloud Sync', currentUser ? currentUser.username : 'system', 'Data synced to cloud.');
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return response.json();
+    })
+    .then(result => {
+      if (result.status === 'success') {
+        setSyncStatus('✅ Data saved to cloud successfully!');
+        addAuditLog('Cloud Sync', currentUser ? currentUser.username : 'system', 'Data synced to cloud.');
+      } else {
+        throw new Error(result.msg || 'Unknown error');
+      }
     })
     .catch(err => {
       setSyncStatus('❌ Sync failed: ' + err.message, true);
@@ -559,21 +565,19 @@
     }
     if (!confirm('Loading from cloud will OVERWRITE your local data. Continue?')) return;
     setSyncStatus('⏳ Loading from cloud...');
+    
     fetch(GOOGLE_SCRIPT_URL)
     .then(response => {
       if (!response.ok) throw new Error('HTTP ' + response.status);
       return response.json();
     })
     .then(cloudData => {
-      // Validate cloud data
       if (!cloudData || typeof cloudData !== 'object' || !cloudData.clients) {
         throw new Error('Invalid data from cloud.');
       }
-      // Save to localStorage
       saveLocalData(cloudData);
       setSyncStatus('✅ Data loaded from cloud successfully!');
       addAuditLog('Cloud Load', currentUser ? currentUser.username : 'system', 'Data loaded from cloud.');
-      // Refresh current page
       navigateTo(currentPage || 'dashboard');
     })
     .catch(err => {
@@ -582,7 +586,7 @@
   }
 
   // ============================================================
-  // HELPERS
+  // HELPERS (rest of your original code remains unchanged)
   // ============================================================
   function countPeriods(installDateStr, currentDate) {
     if (!installDateStr) return 0;
@@ -909,7 +913,7 @@
   }
 
   // ============================================================
-  // NAVIGATION & RENDER
+  // NAVIGATION & RENDER (same as before)
   // ============================================================
   function navigateTo(page) {
     if (!currentUser) return;
@@ -962,7 +966,7 @@
   }
 
   // ============================================================
-  // DASHBOARD
+  // DASHBOARD (unchanged)
   // ============================================================
   function renderDashboard(container, data, clientsWithBalance) {
     let activeClientsList = data.clients;
@@ -1148,7 +1152,7 @@
   }
 
   // ============================================================
-  // COLLECTOR PAGE
+  // COLLECTOR PAGE (unchanged)
   // ============================================================
   function renderCollector(container, data) {
     const isAdmin = currentUser.role === 'admin';
